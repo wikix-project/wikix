@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wikix"
+version = "0.1.0"
+description = "Export X bookmarks to local Markdown and JSONL."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Atharva Fulay" }]
+keywords = ["x", "twitter", "bookmarks", "obsidian", "markdown", "jsonl"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "httpx>=0.28",
+  "keyring>=25.6",
+  "platformdirs>=4.3",
+  "portalocker>=3.1",
+  "pydantic>=2.10",
+  "PyYAML>=6.0",
+  "tomli-w>=1.2",
+  "typer>=0.16",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.14",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "respx>=0.22",
+  "ruff>=0.9",
+  "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+wikix = "wikix.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/atharvafulay/wikix"
+Issues = "https://github.com/atharvafulay/wikix/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wikix"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["wikix"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["wikix"]
