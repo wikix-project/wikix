@@ -115,6 +115,11 @@ wikix --collection ~/Documents/MyVault/X-Bookmarks sync
 wikix sync --yes
 ```
 
+When a remote bookmark is removed, Wikix deletes its unannotated note and moves an annotated note to
+`_review/`. Malformed personal-note markers or edits to managed content remain untouched and are
+reported as conflicts. Transient network and 5xx failures retry; HTTP 429 waits for X's reset time.
+Compatible staging resumes interrupted scans, and incomplete snapshots preserve the existing export.
+
 ## Check status and log out
 
 ```shell
@@ -126,11 +131,10 @@ wikix auth logout
 
 ## Headless environments
 
-The interactive login needs a local browser and callback port. A headless process may securely inject user-context tokens instead:
+The interactive login needs a local browser and callback port. Configure your CI or process manager
+to inject `WIKIX_ACCESS_TOKEN` and, optionally, `WIKIX_REFRESH_TOKEN` from its secret store, then run:
 
 ```shell
-export WIKIX_ACCESS_TOKEN=...
-export WIKIX_REFRESH_TOKEN=...
 wikix --collection PATH sync
 ```
 
@@ -139,7 +143,7 @@ Environment values override the OS credential store and are never persisted by W
 ## Troubleshooting
 
 - **No credentials:** run `wikix auth login` from the collection directory, or provide secure headless environment tokens for that command.
-- **Callback URI mismatch or occupied callback port:** register the exact `http://127.0.0.1:PORT/callback` URI in the X app, then rerun `wikix init` with `--callback-port PORT` and log in again.
+- **Callback URI mismatch or occupied callback port:** for a new collection, register the exact `http://127.0.0.1:PORT/callback` URI in the X app, then run `wikix init PATH --client-id YOUR_CLIENT_ID --callback-port PORT`. For an existing collection, register that URI, update `callback_port = PORT` in `.wikix/config.toml`, then rerun `wikix auth login`.
 - **Rejected or incomplete scopes:** update the app to request `bookmark.read`, `tweet.read`, `users.read`, and `offline.access`, then log in again.
 - **Insufficient credits or HTTP 403:** check app approval, endpoint access, credits, and the spending limit in the Developer Console before retrying.
 - **HTTP 429 waiting:** Wikix waits for X's reset time; let it wait or retry after that reset.
