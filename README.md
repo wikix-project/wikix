@@ -3,15 +3,42 @@
 Wikix is an Apache-2.0, local-first Python CLI that exports one X account's complete bookmark
 collection to Obsidian-ready Markdown and versioned JSONL.
 
-Wikix uses the official X API. You provide your own approved X developer app and pay its API
-charges. Wikix has no hosted service, shared credentials, browser scraper, telemetry, or plaintext
-token fallback.
+Wikix reads bookmarks only through the official X API. Each user supplies an approved developer app
+and API credits. Manual imports, X account-archive imports, browser scraping, hosted credentials,
+telemetry, and plaintext token storage are unsupported.
+
+## Before you start
+
+- Python 3.12 or newer.
+- `pipx` or `uv`.
+- An X account and approved X developer project/app.
+- OAuth 2.0 Authorization Code with PKCE access.
+- Sufficient API credits and a configured spending limit.
+- A local browser able to reach `127.0.0.1`.
+- An OS credential store supported by keyring.
+- A separate collection directory for each X account.
 
 > [!CAUTION]
 > A sync fully enumerates the remote bookmark collection. Review the estimate Wikix displays,
 > understand X's current pricing, and configure a spending limit in the X Developer Console before
-> continuing. Bundled pricing and policy metadata was last reviewed on July 28, 2026 and can become
-> stale.
+> continuing.
+
+## Cost and API boundaries
+
+The lean complete-scan estimate is `bookmark count × $0.001`. The price and policy review date is
+July 28, 2026. X pricing may change, and the Developer Console is authoritative. The first sync
+cannot estimate a count; later estimates use the previous successful collection count.
+
+| Current bookmarks | Estimated owned-read cost |
+| ---: | ---: |
+| 100 | $0.10 |
+| 1,000 | $1.00 |
+| 5,000 | $5.00 |
+| 10,000 | $10.00 |
+| 25,000 | $25.00 |
+
+Each sync scans the full collection. Rich and folder modes may incur additional, unpredictable
+resource charges. X's same-day deduplication is not a guaranteed discount.
 
 ## Install
 
@@ -27,20 +54,24 @@ or:
 uv tool install wikix
 ```
 
-## Set up an export
+## Quickstart
 
-First [create and configure your own X developer app](docs/x-app-setup.md). Then initialize a
-collection:
+Follow the end-to-end [getting started guide](docs/getting-started.md) to configure your X app and
+spending limit. Then initialize and sync a collection:
 
 ```shell
 wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID
 cd ~/Documents/MyVault/X-Bookmarks
 wikix auth login
 wikix sync
+wikix status
 ```
 
-The default sync is lean. Rich author/media/reference metadata and X bookmark-folder membership are
-independent opt-ins:
+`wikix auth login` opens X in the system browser and stores tokens in the OS credential store.
+`wikix sync` displays cost assumptions and asks for confirmation before making API calls.
+
+The default profile is lean. Rich author/media/reference metadata and X bookmark-folder membership
+are independent opt-ins:
 
 ```shell
 wikix sync --rich
@@ -48,8 +79,8 @@ wikix sync --folders
 wikix sync --rich --folders
 ```
 
-Use `--yes` only after you have reviewed the cost warning. Use `--collection PATH` before any
-command to operate outside the collection directory:
+Use `--yes` only after you have reviewed the cost warning: it skips confirmation, not billing. Use
+`--collection PATH` before any command to operate outside the collection directory:
 
 ```shell
 wikix --collection ~/Documents/MyVault/X-Bookmarks status
@@ -81,8 +112,9 @@ notes region:
 <!-- wikix:notes:end -->
 ```
 
-Only text between those markers is user-owned. Wikix leaves files untouched when markers are
-malformed or the generated region was edited. It exits nonzero and reports the conflict.
+Only text between those markers is user-owned. Unchanged notes are not rewritten. Wikix leaves
+files untouched when markers are malformed or managed content was edited; it exits nonzero and
+reports the conflict.
 
 `bookmarks.jsonl` is the machine-readable current collection. It preserves exact post text, is
 sorted by post creation time and ID, and contains no removed post bodies. See the
@@ -95,8 +127,9 @@ bookmark returns, the annotation is restored.
 ## Operational behavior
 
 - Every sync is a complete remote scan; "incremental" applies only to local file writes.
-- Successful API pages are checkpointed so an interrupted scan can resume.
-- Output changes are committed only after the complete remote snapshot succeeds.
+- Successful API pages are checkpointed so an interrupted scan can resume from compatible staging.
+- Incomplete API snapshots never replace an existing export; output changes are committed only after
+  the complete remote snapshot succeeds.
 - A collection lock prevents concurrent syncs.
 - HTTP 429 responses wait for the server reset; transient network and 5xx failures retry.
 - Authentication, credit, malformed-response, and unresolved partial-error failures do not alter
