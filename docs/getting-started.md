@@ -14,7 +14,7 @@ Wikix exports one X account's bookmarks to a local, Obsidian-ready collection us
 
 ## Understand the cost before continuing
 
-Wikix estimates an owned-read cost of `bookmark count × $0.001` for a complete scan. The price and policy metadata was reviewed on July 28, 2026; X pricing may change, and the Developer Console is authoritative. The first sync cannot estimate a count. Later estimates use the previous successful collection count.
+Wikix estimates an owned-read cost of `bookmark count × $0.001` for a complete scan. These examples are non-binding: verify current pricing in the X Developer Console before relying on them. The price and policy metadata was reviewed on July 28, 2026; X pricing may change, and the Developer Console is authoritative. The first sync cannot estimate a count. Later estimates use the previous successful collection count.
 
 Every sync scans the full collection. `--rich` and `--folders` can add unpredictable resource charges. X's same-day deduplication is not a guaranteed discount. Set a spending limit before you continue.
 

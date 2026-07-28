@@ -25,9 +25,10 @@ telemetry, and plaintext token storage are unsupported.
 
 ## Cost and API boundaries
 
-The lean complete-scan estimate is `bookmark count × $0.001`. The price and policy review date is
-July 28, 2026. X pricing may change, and the Developer Console is authoritative. The first sync
-cannot estimate a count; later estimates use the previous successful collection count.
+The lean complete-scan estimate is `bookmark count × $0.001`. These examples are non-binding:
+verify current pricing in the X Developer Console before relying on them. The price and policy review
+date is July 28, 2026. X pricing may change, and the Developer Console is authoritative. The first
+sync cannot estimate a count; later estimates use the previous successful collection count.
 
 | Current bookmarks | Estimated owned-read cost |
 | ---: | ---: |
@@ -42,17 +43,8 @@ resource charges. X's same-day deduplication is not a guaranteed discount.
 
 ## Install
 
-Wikix requires Python 3.12 or newer:
-
-```shell
-pipx install wikix
-```
-
-or:
-
-```shell
-uv tool install wikix
-```
+Wikix requires Python 3.12 or newer. Install with `pipx install wikix` (shown below) or `uv tool
+install wikix`.
 
 ## Quickstart
 
@@ -60,6 +52,7 @@ Follow the end-to-end [getting started guide](docs/getting-started.md) to config
 spending limit. Then initialize and sync a collection:
 
 ```shell
+pipx install wikix
 wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID
 cd ~/Documents/MyVault/X-Bookmarks
 wikix auth login
