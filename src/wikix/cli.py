@@ -42,7 +42,7 @@ app = typer.Typer(no_args_is_help=True)
 auth_app = typer.Typer(no_args_is_help=True)
 app.add_typer(auth_app, name="auth")
 
-PRICING_REVIEWED_AT = "2026-07-28"
+PRICING_REVIEWED_AT = "2026-07-29"
 POLICY_REVIEWED_AT = "2026-07-28"
 
 
