@@ -7,7 +7,7 @@ Thank you for helping make personal X bookmark exports safer and more dependable
 Wikix requires Python 3.12 or newer and uses uv:
 
 ```shell
-git clone https://github.com/atharvafulay/wikix.git
+git clone https://github.com/wikix-project/wikix.git
 cd wikix
 uv sync --extra dev
 ```

@@ -43,8 +43,8 @@ resource charges. X's same-day deduplication is not a guaranteed discount.
 
 ## Install
 
-Wikix requires Python 3.12 or newer. Install with `pipx install wikix` (shown below) or `uv tool
-install wikix`.
+Wikix requires Python 3.12 or newer. Install with `pipx install git+https://github.com/wikix-project/wikix.git` (shown below) or
+`uv tool install git+https://github.com/wikix-project/wikix.git`.
 
 ## Quickstart
 
@@ -52,7 +52,7 @@ Follow the end-to-end [getting started guide](docs/getting-started.md) to config
 spending limit. Then initialize and sync a collection:
 
 ```shell
-pipx install wikix
+pipx install git+https://github.com/wikix-project/wikix.git
 wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID
 cd ~/Documents/MyVault/X-Bookmarks
 wikix auth login

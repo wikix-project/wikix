@@ -51,13 +51,13 @@ Buy sufficient API credits in the Developer Console and configure a spending lim
 ## Install Wikix
 
 ```shell
-pipx install wikix
+pipx install git+https://github.com/wikix-project/wikix.git
 ```
 
 Or install with `uv`:
 
 ```shell
-uv tool install wikix
+uv tool install git+https://github.com/wikix-project/wikix.git
 ```
 
 ## Initialize a collection
