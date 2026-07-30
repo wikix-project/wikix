@@ -238,6 +238,59 @@ figcaption {
   max-width: 36rem;
 }
 
+.get-started {
+  display: grid;
+  gap: 28px;
+}
+
+.section-heading {
+  display: grid;
+  gap: 14px;
+}
+
+.section-heading > * {
+  margin: 0;
+}
+
+.section-copy {
+  max-width: 44rem;
+  color: var(--muted);
+}
+
+.os-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.os-option {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 22px 24px;
+  text-decoration: none;
+}
+
+.os-option + .os-option {
+  border-left: 1px solid var(--rule);
+}
+
+.os-option:hover {
+  color: var(--ink);
+  background: var(--paper-raised);
+}
+
+.os-option span {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.os-option small {
+  color: var(--muted);
+  font: 0.76rem/1.5 "IBM Plex Mono", monospace;
+}
+
 .note-specimen {
   min-width: 0;
   margin: 0;
@@ -496,6 +549,15 @@ footer nav {
 
   .value-list {
     grid-template-columns: 1fr;
+  }
+
+  .os-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .os-option + .os-option {
+    border-top: 1px solid var(--rule);
+    border-left: 0;
   }
 
   .value-list article,

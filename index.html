@@ -38,7 +38,7 @@
           JSONL for scripts and private workflows on your computer.
         </p>
         <p class="hero-actions">
-          <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">Get started</a>
+          <a class="button" href="#get-started">Get started</a>
           <a href="https://github.com/wikix-project/wikix">View on GitHub</a>
         </p>
         <p class="hero-qualifier">
@@ -70,6 +70,40 @@ The complete text of the bookmarked post appears here.
 
 Useful idea to revisit when planning local search.</code></pre>
       </figure>
+    </section>
+
+    <section id="get-started" class="get-started" aria-labelledby="get-started-title">
+      <div class="section-heading">
+        <p class="eyebrow">Step-by-step setup</p>
+        <h2 id="get-started-title">Choose your operating system.</h2>
+        <p class="section-copy">
+          Each guide starts with X developer access and ends with your first local bookmark export.
+          No Python or command-line experience is assumed.
+        </p>
+      </div>
+      <div class="os-grid">
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-macos.md"
+        >
+          <span>macOS</span>
+          <small>Terminal and macOS Keychain</small>
+        </a>
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-windows.md"
+        >
+          <span>Windows</span>
+          <small>PowerShell and Windows credential storage</small>
+        </a>
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-linux.md"
+        >
+          <span>Linux</span>
+          <small>Desktop terminal and Secret Service</small>
+        </a>
+      </div>
     </section>
 
     <section id="value" class="value-section" aria-labelledby="value-title">
@@ -169,7 +203,7 @@ Useful idea to revisit when planning local search.</code></pre>
       </div>
       <div class="install-panel">
         <p class="install-label">Alpha · install from source</p>
-        <pre class="install-command"><code>pipx install git+https://github.com/wikix-project/wikix.git</code></pre>
+        <pre class="install-command"><code>uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git</code></pre>
       </div>
     </section>
   </main>

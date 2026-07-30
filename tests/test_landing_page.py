@@ -10,8 +10,15 @@ SECURITY = "https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md"
 CONTRIBUTING = "https://github.com/wikix-project/wikix/blob/HEAD/CONTRIBUTING.md"
 LICENSE = "https://github.com/wikix-project/wikix/blob/HEAD/LICENSE"
 GITHUB = "https://github.com/wikix-project/wikix"
-SOURCE_INSTALL = "pipx install git+https://github.com/wikix-project/wikix.git"
-SOURCE_INSTALL_UV = "uv tool install git+https://github.com/wikix-project/wikix.git"
+SOURCE_INSTALL_UV = (
+    "uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git"
+)
+GUIDE_ROOT = "https://github.com/wikix-project/wikix/blob/HEAD/docs"
+GUIDE_LINKS = {
+    "macOS": f"{GUIDE_ROOT}/getting-started-macos.md",
+    "Windows": f"{GUIDE_ROOT}/getting-started-windows.md",
+    "Linux": f"{GUIDE_ROOT}/getting-started-linux.md",
+}
 
 
 class LandingPageParser(HTMLParser):
@@ -77,6 +84,15 @@ def parse_landing_page() -> LandingPageParser:
     return parser
 
 
+def test_landing_page_links_to_each_operating_system_guide() -> None:
+    parser = parse_landing_page()
+
+    assert "#get-started" in parser.links
+    for link in GUIDE_LINKS.values():
+        assert parser.links.count(link) == 1
+    assert parser.scripts == 0
+
+
 def test_landing_page_is_user_first_and_literal() -> None:
     parser = parse_landing_page()
     content = " ".join(parser.text)
@@ -87,7 +103,7 @@ def test_landing_page_is_user_first_and_literal() -> None:
     assert "files you own" not in content
     assert "Alpha" in content
     assert "install from source" in content
-    assert SOURCE_INSTALL in content
+    assert SOURCE_INSTALL_UV in content
     assert GETTING_STARTED in parser.links
 
 
@@ -163,7 +179,7 @@ def test_landing_page_ends_with_source_install_action() -> None:
     content = " ".join(parser.text)
 
     assert "If Wikix fits your setup, create your first local collection." in content
-    assert SOURCE_INSTALL in content
+    assert SOURCE_INSTALL_UV in content
     assert GETTING_STARTED in parser.links_by_section["start"]
     assert GITHUB in parser.links_by_section["start"]
 
@@ -225,7 +241,14 @@ def test_install_docs_and_project_urls_use_current_source_repository() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     combined_docs = "\n".join(
         (ROOT / path).read_text(encoding="utf-8")
-        for path in ("README.md", "docs/getting-started.md", "CONTRIBUTING.md")
+        for path in (
+            "README.md",
+            "docs/getting-started.md",
+            "docs/getting-started-macos.md",
+            "docs/getting-started-windows.md",
+            "docs/getting-started-linux.md",
+            "CONTRIBUTING.md",
+        )
     )
 
     assert project["project"]["urls"] == {
@@ -235,7 +258,6 @@ def test_install_docs_and_project_urls_use_current_source_repository() -> None:
     assert "pipx install wikix" not in combined_docs
     assert "uv tool install wikix" not in combined_docs
     assert "github.com/atharvafulay/wikix" not in combined_docs
-    assert SOURCE_INSTALL in combined_docs
     assert SOURCE_INSTALL_UV in combined_docs
 
 

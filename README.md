@@ -10,9 +10,10 @@ telemetry, and plaintext token storage are unsupported.
 ## Cost and API boundaries
 
 The lean complete-scan estimate is `bookmark count × $0.001`. These examples are non-binding:
-verify current pricing in the X Developer Console before relying on them. The price and policy review
-date is July 28, 2026. X pricing may change, and the Developer Console is authoritative. The first
-sync cannot estimate a count; later estimates use the previous successful collection count.
+verify current pricing in the X Developer Console before relying on them. Pricing was reviewed on
+July 29, 2026; policy guidance was reviewed on July 28, 2026. X pricing may change, and the
+Developer Console is authoritative. The first sync cannot estimate a count; later estimates use the
+previous successful collection count.
 
 | Current bookmarks | Estimated owned-read cost |
 | ---: | ---: |
