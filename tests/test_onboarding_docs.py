@@ -55,7 +55,7 @@ def test_documented_wikix_commands_match_real_cli_options() -> None:
 
     for command in commands:
         probe = command_help_probe(command)
-        result = RUNNER.invoke(app, probe)
+        result = RUNNER.invoke(app, probe, env={"COLUMNS": "200"})
         assert result.exit_code == 0, (command, result.stdout)
         if probe == ["--version"]:
             assert result.stdout.startswith("Wikix ")
