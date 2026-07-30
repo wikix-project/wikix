@@ -220,6 +220,11 @@ wikix sync
   rerun `wikix --version`.
 - **Callback URI mismatch:** make the app callback exactly
   `http://127.0.0.1:8765/callback`, save it, and rerun `wikix auth login`.
+- **Port 8765 is already in use:** choose an unused port such as `8766`, add
+  `http://127.0.0.1:8766/callback` to the X app, and open
+  `$HOME/Documents/X-Bookmarks/.wikix/config.toml` in a text editor. Change
+  `callback_port = 8765` to `callback_port = 8766`, save the file, and rerun
+  `wikix auth login`. Do not run `wikix init` again for an existing collection.
 - **Missing or rejected scopes:** enable `bookmark.read`, `tweet.read`, `users.read`, and
   `offline.access`, save the app, and sign in again.
 - **Keychain is locked or unavailable:** unlock your login Keychain in the **Passwords** app or

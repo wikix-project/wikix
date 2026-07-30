@@ -142,7 +142,13 @@ Run:
 uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git
 ```
 
-Then run:
+Make the installed command available in future PowerShell windows:
+
+```powershell
+uv tool update-shell
+```
+
+Close PowerShell and open it again. Then run:
 
 ```powershell
 wikix --version
@@ -240,9 +246,14 @@ wikix sync
   `git --version`.
 - **`uv` is not recognized:** reopen PowerShell after installation and rerun `uv --version`.
 - **`wikix` is not recognized:** reopen PowerShell, rerun the install command in step 9, and then
-  rerun `wikix --version`.
+  run `uv tool update-shell`. Reopen PowerShell once more and rerun `wikix --version`.
 - **Callback URI mismatch:** make the app callback exactly
   `http://127.0.0.1:8765/callback`, save it, and rerun `wikix auth login`.
+- **Port 8765 is already in use:** choose an unused port such as `8766`, add
+  `http://127.0.0.1:8766/callback` to the X app, and open
+  `$HOME\Documents\X-Bookmarks\.wikix\config.toml` in Notepad. Change
+  `callback_port = 8765` to `callback_port = 8766`, save the file, and rerun
+  `wikix auth login`. Do not run `wikix init` again for an existing collection.
 - **Missing or rejected scopes:** enable `bookmark.read`, `tweet.read`, `users.read`, and
   `offline.access`, save the app, and sign in again.
 - **Credential storage is locked or unavailable:** unlock Windows with your normal account and
