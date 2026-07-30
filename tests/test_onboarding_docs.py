@@ -35,9 +35,7 @@ def documented_wikix_commands() -> list[str]:
         content = document.read_text(encoding="utf-8")
         for block in FENCE.findall(content):
             commands.extend(
-                line.strip()
-                for line in block.splitlines()
-                if line.strip().startswith("wikix ")
+                line.strip() for line in block.splitlines() if line.strip().startswith("wikix ")
             )
     return commands
 

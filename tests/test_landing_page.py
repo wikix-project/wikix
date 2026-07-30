@@ -10,9 +10,7 @@ SECURITY = "https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md"
 CONTRIBUTING = "https://github.com/wikix-project/wikix/blob/HEAD/CONTRIBUTING.md"
 LICENSE = "https://github.com/wikix-project/wikix/blob/HEAD/LICENSE"
 GITHUB = "https://github.com/wikix-project/wikix"
-SOURCE_INSTALL_UV = (
-    "uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git"
-)
+SOURCE_INSTALL_UV = "uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git"
 GUIDE_ROOT = "https://github.com/wikix-project/wikix/blob/HEAD/docs"
 GUIDE_LINKS = {
     "macOS": f"{GUIDE_ROOT}/getting-started-macos.md",
