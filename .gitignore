@@ -1,4 +1,6 @@
 .venv/
+/.superpowers/
+/docs/superpowers/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

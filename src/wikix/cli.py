@@ -11,6 +11,7 @@ import httpx
 import portalocker
 import typer
 
+from wikix import __version__
 from wikix.api import XApiError, default_api_client
 from wikix.auth import (
     CredentialStore,
@@ -41,7 +42,7 @@ app = typer.Typer(no_args_is_help=True)
 auth_app = typer.Typer(no_args_is_help=True)
 app.add_typer(auth_app, name="auth")
 
-PRICING_REVIEWED_AT = "2026-07-28"
+PRICING_REVIEWED_AT = "2026-07-29"
 POLICY_REVIEWED_AT = "2026-07-28"
 
 
@@ -50,9 +51,24 @@ class CliSettings:
     collection: Path | None
 
 
+def version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"Wikix {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def main(
     ctx: typer.Context,
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            callback=version_callback,
+            is_eager=True,
+            help="Show the installed Wikix version and exit.",
+        ),
+    ] = False,
     collection: Annotated[
         Path | None,
         typer.Option(

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from wikix import __version__
 from wikix.api import XApiError
 from wikix.auth import CredentialStore, CredentialUnavailableError, OAuthTokens
 from wikix.cli import app, cost_summary, run_with_token_refresh
@@ -13,6 +14,13 @@ from wikix.state import load_state, save_state
 from wikix.sync import SyncResult
 
 runner = CliRunner()
+
+
+def test_version_option_does_not_require_a_collection() -> None:
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert result.stdout == f"Wikix {__version__}\n"
 
 
 class EmptyBackend:

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    name="description"
+    content="Export X bookmarks to Markdown and JSONL with a local-first CLI."
+  >
+  <meta property="og:title" content="Wikix — Export X bookmarks to Markdown and JSONL">
+  <meta
+    property="og:description"
+    content="A local-first Python CLI for exporting X bookmarks to files you control."
+  >
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <title>Wikix — Export X bookmarks to Markdown and JSONL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="/">wikix <span>alpha</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#requirements">Before you start</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Local-first X bookmark export</p>
+        <h1 id="hero-title">Export X bookmarks to Markdown and JSONL.</h1>
+        <p class="hero-summary">
+          Keep one Obsidian-ready Markdown file per current bookmark, plus deterministic
+          JSONL for scripts and private workflows on your computer.
+        </p>
+        <p class="hero-actions">
+          <a class="button" href="#get-started">Get started</a>
+          <a href="https://github.com/wikix-project/wikix">View on GitHub</a>
+        </p>
+        <p class="hero-qualifier">
+          Alpha · Python 3.12+ · requires your own X developer app and API credits.
+        </p>
+      </div>
+      <figure class="note-specimen">
+        <figcaption>
+          <span>bookmarks/1900000000000000000.md</span>
+          <span>Synthetic shortened example</span>
+        </figcaption>
+        <pre><code>---
+profile: lean
+x_post_id: "1900000000000000000"
+source_url: https://x.com/i/web/status/1900000000000000000
+---
+
+## Post
+
+```text
+The complete text of the bookmarked post appears here.
+```
+
+## Source
+
+[View on X](https://x.com/i/web/status/1900000000000000000)
+
+## Personal notes
+
+Useful idea to revisit when planning local search.</code></pre>
+      </figure>
+    </section>
+
+    <section id="get-started" class="get-started" aria-labelledby="get-started-title">
+      <div class="section-heading">
+        <p class="eyebrow">Step-by-step setup</p>
+        <h2 id="get-started-title">Choose your operating system.</h2>
+        <p class="section-copy">
+          Each guide starts with X developer access and ends with your first local bookmark export.
+          No Python or command-line experience is assumed.
+        </p>
+      </div>
+      <div class="os-grid">
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-macos.md"
+        >
+          <span>macOS</span>
+          <small>Terminal and macOS Keychain</small>
+        </a>
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-windows.md"
+        >
+          <span>Windows</span>
+          <small>PowerShell and Windows credential storage</small>
+        </a>
+        <a
+          class="os-option"
+          href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started-linux.md"
+        >
+          <span>Linux</span>
+          <small>Desktop terminal and Secret Service</small>
+        </a>
+      </div>
+    </section>
+
+    <section id="value" class="value-section" aria-labelledby="value-title">
+      <p class="section-kicker">What you keep</p>
+      <h2 id="value-title">Useful files, without a hosted library.</h2>
+      <div class="value-list">
+        <article>
+          <h3>Markdown for ordinary tools.</h3>
+          <p>One file per current bookmark, ready for Obsidian, text search, and version control.</p>
+        </article>
+        <article>
+          <h3>JSONL for private workflows.</h3>
+          <p>A deterministic machine-readable collection for scripts, retrieval, and local analysis.</p>
+        </article>
+        <article>
+          <h3>Careful updates.</h3>
+          <p>
+            Personal annotations survive normal syncs, while conflicts and incomplete snapshots
+            do not silently replace the last good export.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how-it-works" aria-labelledby="workflow-title">
+      <p class="section-kicker">How it works</p>
+      <h2 id="workflow-title">Your app, your collection, your files.</h2>
+      <p class="data-flow" aria-label="Wikix data flow">
+        <span>Official X API</span><span aria-hidden="true">→</span>
+        <strong>Wikix on your computer</strong><span aria-hidden="true">→</span>
+        <span>Markdown + JSONL</span>
+      </p>
+      <ol class="workflow">
+        <li><strong>1. Connect</strong> Provide the client ID from your own X developer app.</li>
+        <li><strong>2. Authorize</strong> Sign in with X in your system browser.</li>
+        <li><strong>3. Sync</strong> Write the current collection to a directory you choose.</li>
+      </ol>
+    </section>
+
+    <section id="requirements" aria-labelledby="requirements-title">
+      <p class="section-kicker">Before you start</p>
+      <h2 id="requirements-title">A local tool with real API requirements.</h2>
+      <ul>
+        <li>
+          <strong>Alpha software</strong>
+          <span>Install from source with Python 3.12 or newer.</span>
+        </li>
+        <li>
+          <strong>X developer access</strong>
+          <span>Bring your own approved X developer app and API credits.</span>
+        </li>
+        <li>
+          <strong>Complete scans</strong>
+          <span>
+            Every sync scans the complete current bookmark collection and may incur X API charges.
+          </span>
+        </li>
+      </ul>
+      <p>
+        The
+        <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">getting-started guide</a>
+        covers OAuth setup, current cost cautions, and spending limits.
+      </p>
+    </section>
+
+    <section id="privacy" class="trust-section" aria-labelledby="privacy-title">
+      <p class="section-kicker">Private and careful by design</p>
+      <h2 id="privacy-title">Your collection stays under your control.</h2>
+      <dl class="trust-list">
+        <div>
+          <dt>No Wikix server or telemetry.</dt>
+          <dd>Bookmarks are written directly to the local directory you choose.</dd>
+        </div>
+        <div>
+          <dt>Credentials stay local.</dt>
+          <dd>OAuth tokens use your operating-system credential store.</dd>
+        </div>
+        <div>
+          <dt>The last good export is protected.</dt>
+          <dd>Incomplete snapshots do not replace it. Managed-content conflicts are reported instead of overwritten.</dd>
+        </div>
+      </dl>
+      <p>
+        Read the <a href="https://github.com/wikix-project/wikix/blob/HEAD/PRIVACY.md">privacy policy</a>
+        and <a href="https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md">security policy</a>.
+      </p>
+    </section>
+
+    <section id="start" class="start-section" aria-labelledby="start-title">
+      <div>
+        <p class="section-kicker">Start locally</p>
+        <h2 id="start-title">If Wikix fits your setup, create your first local collection.</h2>
+        <p class="hero-actions">
+          <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">Get started</a>
+          <a href="https://github.com/wikix-project/wikix">View source</a>
+        </p>
+      </div>
+      <div class="install-panel">
+        <p class="install-label">Alpha · install from source</p>
+        <pre class="install-command"><code>uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Wikix</span>
+    <nav aria-label="Footer navigation">
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">Getting Started</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md">Security</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/CONTRIBUTING.md">Contributing</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/LICENSE">Apache-2.0</a>
+    </nav>
+  </footer>
+</body>
+</html>

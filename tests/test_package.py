@@ -1,4 +1,12 @@
-def test_package_exposes_version() -> None:
-    import wikix
+import tomllib
+from pathlib import Path
 
-    assert wikix.__version__ == "0.1.0"
+import wikix
+
+ROOT = Path(__file__).parents[1]
+
+
+def test_package_exposes_project_version() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+
+    assert wikix.__version__ == project["version"]

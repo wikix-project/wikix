@@ -47,8 +47,8 @@ dev = [
 wikix = "wikix.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/atharvafulay/wikix"
-Issues = "https://github.com/atharvafulay/wikix/issues"
+Homepage = "https://github.com/wikix-project/wikix"
+Issues = "https://github.com/wikix-project/wikix/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wikix"]

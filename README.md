@@ -7,28 +7,13 @@ Wikix reads bookmarks only through the official X API. Each user supplies an app
 and API credits. Manual imports, X account-archive imports, browser scraping, hosted credentials,
 telemetry, and plaintext token storage are unsupported.
 
-## Before you start
-
-- Python 3.12 or newer.
-- `pipx` or `uv`.
-- An X account and approved X developer project/app.
-- OAuth 2.0 Authorization Code with PKCE access.
-- Sufficient API credits and a configured spending limit.
-- A local browser able to reach `127.0.0.1`.
-- An OS credential store supported by keyring.
-- A separate collection directory for each X account.
-
-> [!CAUTION]
-> A sync fully enumerates the remote bookmark collection. Review the estimate Wikix displays,
-> understand X's current pricing, and configure a spending limit in the X Developer Console before
-> continuing.
-
 ## Cost and API boundaries
 
 The lean complete-scan estimate is `bookmark count × $0.001`. These examples are non-binding:
-verify current pricing in the X Developer Console before relying on them. The price and policy review
-date is July 28, 2026. X pricing may change, and the Developer Console is authoritative. The first
-sync cannot estimate a count; later estimates use the previous successful collection count.
+verify current pricing in the X Developer Console before relying on them. Pricing was reviewed on
+July 29, 2026; policy guidance was reviewed on July 28, 2026. X pricing may change, and the
+Developer Console is authoritative. The first sync cannot estimate a count; later estimates use the
+previous successful collection count.
 
 | Current bookmarks | Estimated owned-read cost |
 | ---: | ---: |
@@ -41,46 +26,13 @@ sync cannot estimate a count; later estimates use the previous successful collec
 Each sync scans the full collection. Rich and folder modes may incur additional, unpredictable
 resource charges. X's same-day deduplication is not a guaranteed discount.
 
-## Install
+## Get started
 
-Wikix requires Python 3.12 or newer. Install with `pipx install wikix` (shown below) or `uv tool
-install wikix`.
+Wikix currently installs from its GitHub source. It is not yet published on PyPI.
 
-## Quickstart
-
-Follow the end-to-end [getting started guide](docs/getting-started.md) to configure your X app and
-spending limit. Then initialize and sync a collection:
-
-```shell
-pipx install wikix
-wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID
-cd ~/Documents/MyVault/X-Bookmarks
-wikix auth login
-wikix sync
-wikix status
-```
-
-`wikix auth login` opens X in the system browser and stores tokens in the OS credential store.
-`wikix sync` displays cost assumptions and asks for confirmation before making API calls.
-
-The default profile is lean. Rich author/media/reference metadata and X bookmark-folder membership
-are independent opt-ins:
-
-```shell
-wikix sync --rich
-wikix sync --folders
-wikix sync --rich --folders
-```
-
-Use `--yes` only after you have reviewed the cost warning: it skips confirmation, not billing. Use
-`--collection PATH` before any command to operate outside the collection directory:
-
-```shell
-wikix --collection ~/Documents/MyVault/X-Bookmarks status
-```
-
-Headless environments may inject `WIKIX_ACCESS_TOKEN` and, optionally, `WIKIX_REFRESH_TOKEN`.
-Environment values override the OS credential store and are never persisted by Wikix.
+Follow the [getting started guide](docs/getting-started.md), then choose the complete walkthrough
+for macOS, Windows, or Linux. Each walkthrough covers X developer access, API credits, OAuth
+configuration, Git and Wikix installation, authentication, your first export, and troubleshooting.
 
 ## Output
 
