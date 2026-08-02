@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from wikix.cli import app
@@ -49,16 +50,25 @@ def command_help_probe(command: str) -> list[str]:
     return [words[1], "--help"]
 
 
+def command_options(probe: list[str]) -> set[str]:
+    command = get_command(app)
+    for name in probe[:-1]:
+        assert hasattr(command, "commands")
+        command = command.commands[name]
+    return {option for parameter in command.params for option in getattr(parameter, "opts", ())}
+
+
 def test_documented_wikix_commands_match_real_cli_options() -> None:
     commands = documented_wikix_commands()
     assert commands
 
     for command in commands:
         probe = command_help_probe(command)
-        result = RUNNER.invoke(app, probe, env={"COLUMNS": "200"})
-        assert result.exit_code == 0, (command, result.stdout)
         if probe == ["--version"]:
+            result = RUNNER.invoke(app, probe)
+            assert result.exit_code == 0, (command, result.stdout)
             assert result.stdout.startswith("Wikix ")
             continue
+        options = command_options(probe)
         for option in OPTION.findall(command):
-            assert option in result.stdout, (command, option, result.stdout)
+            assert option in options, (command, option, options)
