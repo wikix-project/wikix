@@ -5,8 +5,8 @@
 > checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Produce independently reviewable launch-readiness pull requests and a fully verified,
-unpushed Wikix 1.0 release candidate without merging, publishing, deploying, changing external
-settings, or deleting user work.
+unpushed Wikix 1.0 release candidate without merging, publishing, deploying to production,
+changing external settings, or deleting user work.
 
 **Architecture:** Execute one issue-sized stream at a time from the then-current `origin/main`.
 Keep confidential remediation inside a private advisory, keep public branches independent of it,
@@ -1361,9 +1361,11 @@ and no JavaScript. Stop the server when finished.
 
 - [ ] **Step 7: Create a preview deployment only if needed for hosting verification**
 
-Create a Vercel preview, not a production deployment. Verify response headers, all three routes,
-asset loading, and that `.vercelignore` excludes source, tests, private documentation, and local
-artifacts. Record the preview URL privately until public review is appropriate.
+Create a non-production Vercel preview, not a production deployment. This limited preview is
+permitted for hosting verification; do not promote it to production or assign a production domain.
+Verify response headers, all three routes, asset loading, and that `.vercelignore` excludes source,
+tests, private documentation, and local artifacts. Record the preview URL privately until public
+review is appropriate.
 
 - [ ] **Step 8: Mark the credentialed live smoke test explicitly**
 
