@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-20
 **Issue:** [#3](https://github.com/wikix-project/wikix/issues/3)
-**Status:** Chat design approved; written specification review pending
+**Status:** Approved
 
 ## Summary
 
