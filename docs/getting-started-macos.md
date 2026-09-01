@@ -132,7 +132,7 @@ wikix --version
 Success is:
 
 ```text
-Wikix 0.1.0
+Wikix 1.0.0
 ```
 
 ## 10. Create your bookmark collection
