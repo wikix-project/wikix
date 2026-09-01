@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    name="description"
+    content="Set up Wikix locally, connect your X developer app, and export bookmarks to Markdown and JSONL."
+  >
+  <meta property="og:title" content="Wikix — Step-by-Step Guide">
+  <meta
+    property="og:description"
+    content="Set up the local-first Wikix bookmark exporter from your X app to your first Markdown and JSONL export."
+  >
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <title>Wikix — Step-by-Step Guide</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="/">wikix <span>1.0</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="/quick-setup.html">Quick setup</a>
+      <a href="#steps">Steps</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="guide-main">
+    <section class="guide-intro" aria-labelledby="guide-title">
+      <p class="section-kicker">A local setup path</p>
+      <h1 id="guide-title">Step-by-Step Guide</h1>
+      <p class="guide-deck">
+        Go from an approved X developer app to a local collection of Markdown notes and JSONL.
+        Wikix uses your own credentials, your own API access, and a directory you control.
+      </p>
+      <p class="guide-quick-link">Prefer the shortest path? <a href="/quick-setup.html">Open Quick setup</a>.</p>
+      <nav class="guide-toc" aria-labelledby="guide-toc-title">
+        <p id="guide-toc-title" class="guide-toc-label">In this guide</p>
+        <ol>
+          <li><a href="#create-app">Create your X app</a></li>
+          <li><a href="#oauth">Configure OAuth</a></li>
+          <li><a href="#install">Install Wikix</a></li>
+          <li><a href="#collection">Create a collection</a></li>
+          <li><a href="#authenticate">Authenticate</a></li>
+          <li><a href="#first-sync">Run your first sync</a></li>
+          <li><a href="#maintain">Inspect and maintain your export</a></li>
+          <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ol>
+      </nav>
+    </section>
+
+    <section class="guide-section guide-callout" aria-labelledby="before-title">
+      <p class="section-kicker">Before you begin</p>
+      <h2 id="before-title">Have the account access and budget ready.</h2>
+      <p>
+        You need Python 3.12 or newer, an X account, an approved X developer project and app,
+        OAuth 2.0 Authorization Code with PKCE access, API credits, and a spending limit.
+        Your system browser must be able to reach <code>127.0.0.1</code>, and each X account
+        needs its own collection directory.
+      </p>
+      <h3>Cost check</h3>
+      <p>
+        A complete scan estimates owned reads at <code>bookmark count × $0.001</code> when a
+        previous successful count is available. The first sync cannot estimate a count, and
+        current X pricing in the Developer Console is authoritative. Every sync scans the full
+        collection; <code>--rich</code> and <code>--folders</code> can add unpredictable charges.
+      </p>
+    </section>
+
+    <div id="steps" class="guide-step-list">
+      <section id="create-app" class="guide-section" aria-labelledby="create-app-title">
+        <p class="section-kicker">Step 1</p>
+        <h2 id="create-app-title">1. Create your X app</h2>
+        <p>
+          In the <a href="https://developer.x.com/en/portal/dashboard">X Developer Console</a>,
+          create or select a project and app approved for your account. Confirm that the app can
+          use the bookmark endpoint. Console labels, prices, and policy terms can change, so the
+          current console and <a href="https://docs.x.com/x-api/users/get-bookmarks">bookmark endpoint documentation</a>
+          are the source of truth.
+        </p>
+        <h3>Keep the app owned by you</h3>
+        <p>
+          Wikix is a local tool. It does not provide hosted credentials or a shared X app for your
+          collection, and it does not scrape bookmarks through a browser.
+        </p>
+      </section>
+
+      <section id="oauth" class="guide-section" aria-labelledby="oauth-title">
+        <p class="section-kicker">Step 2</p>
+        <h2 id="oauth-title">2. Configure OAuth</h2>
+        <p>Configure the app as a public native or desktop client using Authorization Code with PKCE.</p>
+        <div class="guide-detail-grid">
+          <div>
+            <h3>Callback details</h3>
+            <p><strong>Callback:</strong> <code>http://127.0.0.1:8765/callback</code></p>
+            <p><strong>Client secret:</strong> not used by Wikix.</p>
+          </div>
+          <div>
+            <h3>Scopes</h3>
+            <p><code>bookmark.read</code>, <code>tweet.read</code>, <code>users.read</code>, and <code>offline.access</code>.</p>
+          </div>
+        </div>
+        <p>Copy the OAuth 2.0 client ID. Do not put a client secret into Wikix.</p>
+      </section>
+
+      <section id="install" class="guide-section" aria-labelledby="install-title">
+        <p class="section-kicker">Step 3</p>
+        <h2 id="install-title">3. Install Wikix</h2>
+        <p>Install from the public source repository with <code>uv</code>:</p>
+        <pre class="guide-command"><code>uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git</code></pre>
+      </section>
+
+      <section id="collection" class="guide-section" aria-labelledby="collection-title">
+        <p class="section-kicker">Step 4</p>
+        <h2 id="collection-title">4. Create a collection</h2>
+        <p>
+          Choose one empty local directory for one X account. The default callback port is
+          <code>8765</code>.
+        </p>
+        <pre class="guide-command"><code>wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID</code></pre>
+        <h3>When the callback port is busy</h3>
+        <p>Choose a port and register its exact callback URI in the X app before initializing:</p>
+        <pre class="guide-command"><code>wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID --callback-port PORT</code></pre>
+      </section>
+
+      <section id="authenticate" class="guide-section" aria-labelledby="authenticate-title">
+        <p class="section-kicker">Step 5</p>
+        <h2 id="authenticate-title">5. Authenticate</h2>
+        <p>Change to the collection directory and start login from there.</p>
+        <pre class="guide-command"><code>cd ~/Documents/MyVault/X-Bookmarks
+wikix auth login</code></pre>
+        <h3>What login does</h3>
+        <p>
+          Wikix opens X in the system browser, validates OAuth state, receives the localhost
+          callback, and binds the collection to the authenticated account. Access and refresh
+          tokens are stored in the operating-system credential store.
+        </p>
+      </section>
+
+      <section id="first-sync" class="guide-section" aria-labelledby="first-sync-title">
+        <p class="section-kicker">Step 6</p>
+        <h2 id="first-sync-title">6. Run your first sync</h2>
+        <p>The default profile is lean. Start from the collection directory:</p>
+        <pre class="guide-command"><code>wikix sync</code></pre>
+        <h3>Review before the API call</h3>
+        <p>
+          The first sync has no previous collection count, so it cannot estimate a cost. Wikix
+          shows its cost assumptions and asks for confirmation before making API calls.
+        </p>
+      </section>
+
+      <section id="maintain" class="guide-section" aria-labelledby="maintain-title">
+        <p class="section-kicker">Step 7</p>
+        <h2 id="maintain-title">7. Inspect and maintain your export</h2>
+        <p>
+          A collection contains <code>bookmarks/</code> Markdown notes, <code>bookmarks.jsonl</code>,
+          <code>_review/</code>, and <code>.wikix/</code> configuration and state. Generated note
+          content is deterministic; only the Personal notes region is user-owned.
+        </p>
+        <h3>Later syncs</h3>
+        <p>Run later scans from the collection directory, or select it explicitly from elsewhere:</p>
+        <pre class="guide-command"><code>wikix sync
+wikix sync --rich
+wikix sync --folders
+wikix sync --rich --folders
+wikix --collection ~/Documents/MyVault/X-Bookmarks sync</code></pre>
+        <p>
+          The <code>--rich</code> and <code>--folders</code> options are independent and may create
+          additional charges. <code>--yes</code> skips confirmation, not billing.
+        </p>
+        <h3>Headless environments</h3>
+        <p>
+          Inject <code>WIKIX_ACCESS_TOKEN</code> and optionally <code>WIKIX_REFRESH_TOKEN</code>
+          from a secret store, then run <code>wikix --collection PATH sync</code>. Never put tokens
+          in shell history, <code>.env</code> files, CI logs, or source control.
+        </p>
+        <h3>Recovery and conflicts</h3>
+        <p>
+          When a bookmark is removed, an unannotated note is deleted and an annotated note moves
+          to <code>_review/</code>. Malformed Personal notes markers or managed-content edits are
+          reported as conflicts and left untouched. Compatible staging resumes interrupted scans,
+          and incomplete snapshots do not replace the existing export.
+        </p>
+      </section>
+    </div>
+
+    <section id="troubleshooting" class="guide-section" aria-labelledby="troubleshooting-title">
+      <p class="section-kicker">When setup stops</p>
+      <h2 id="troubleshooting-title">Troubleshooting</h2>
+      <h3>Credentials or rejected scopes</h3>
+      <p>Run <code>wikix auth login</code> from the collection directory and confirm the four required scopes in the X app.</p>
+      <h3>Callback mismatch</h3>
+      <p>Register the exact <code>http://127.0.0.1:PORT/callback</code> URI, update the collection callback port, and log in again.</p>
+      <h3>Credits, 403, or 429 responses</h3>
+      <p>Check app approval, endpoint access, credits, and spending limits. Wikix waits for X's reset time after a rate limit.</p>
+      <h3>See the collection state</h3>
+      <pre class="guide-command"><code>wikix status
+wikix auth logout</code></pre>
+      <p>For the complete source reference, read the <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">GitHub getting-started guide</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Wikix</span>
+    <nav aria-label="Footer navigation">
+      <a href="/">Home</a>
+      <a href="/quick-setup.html">Quick setup</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md">GitHub guide</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md">Security</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/CONTRIBUTING.md">Contributing</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/LICENSE">Apache-2.0</a>
+    </nav>
+  </footer>
+</body>
+</html>

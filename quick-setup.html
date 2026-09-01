@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    name="description"
+    content="Run the shortest Wikix setup path from your X developer app to a local bookmark export."
+  >
+  <meta property="og:title" content="Wikix — Quick setup">
+  <meta
+    property="og:description"
+    content="The command-first path to install Wikix, authenticate with X, and create your first local export."
+  >
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <title>Wikix — Quick setup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="/">wikix <span>1.0</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="/">Home</a>
+      <a href="/guide.html">Step-by-Step Guide</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="guide-main">
+    <section class="guide-intro" aria-labelledby="quick-setup-title">
+      <p class="section-kicker">A command-first path</p>
+      <h1 id="quick-setup-title">Quick setup</h1>
+      <p class="guide-deck">
+        Have your X developer app ready, run five commands, and keep the resulting Markdown notes
+        and JSONL in a collection directory you control.
+      </p>
+      <p class="guide-quick-link">Need the full context? <a href="/guide.html">Open the Step-by-Step Guide</a>.</p>
+    </section>
+
+    <section id="quick-setup" class="guide-section guide-callout" aria-labelledby="before-title">
+      <p class="section-kicker">Before you run anything</p>
+      <h2 id="before-title">Before you begin</h2>
+      <p>
+        You need Python 3.12 or newer, an X account, an approved X developer project and app,
+        OAuth 2.0 Authorization Code with PKCE access, API credits, and a spending limit. Replace
+        <code>YOUR_CLIENT_ID</code> and the collection path with your own values.
+      </p>
+      <h3>Check the cost first</h3>
+      <p>
+        Every sync scans the complete current bookmark collection and may incur X API charges.
+        The first sync cannot estimate a count, so review current pricing in the Developer Console
+        before confirming the API call.
+      </p>
+    </section>
+
+    <section class="guide-section guide-command-section" aria-labelledby="commands-title">
+      <p class="section-kicker">Five commands</p>
+      <h2 id="commands-title">Run these commands</h2>
+      <p>Run them in order. The collection directory is created by <code>wikix init</code>.</p>
+      <pre class="guide-command"><code>uv tool install --python 3.12 git+https://github.com/wikix-project/wikix.git
+wikix init ~/Documents/MyVault/X-Bookmarks --client-id YOUR_CLIENT_ID
+cd ~/Documents/MyVault/X-Bookmarks
+wikix auth login
+wikix sync</code></pre>
+    </section>
+
+    <section class="guide-section" aria-labelledby="next-title">
+      <p class="section-kicker">After the first sync</p>
+      <h2 id="next-title">What happens next</h2>
+      <p>
+        Wikix opens X in your system browser for local OAuth, writes one Markdown note per current
+        bookmark, and records deterministic JSONL in the collection directory. Personal notes are
+        preserved across normal syncs.
+      </p>
+      <p>
+        For OAuth callback details, collection layout, recovery behavior, and later sync options,
+        read the <a href="/guide.html">Step-by-Step Guide</a> or the
+        <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/quick-setup.md">GitHub Quick setup source</a>.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Wikix</span>
+    <nav aria-label="Footer navigation">
+      <a href="/">Home</a>
+      <a href="/guide.html">Step-by-Step Guide</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/docs/quick-setup.md">GitHub Quick setup</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md">Security</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/CONTRIBUTING.md">Contributing</a>
+      <a href="https://github.com/wikix-project/wikix">GitHub</a>
+      <a href="https://github.com/wikix-project/wikix/blob/HEAD/LICENSE">Apache-2.0</a>
+    </nav>
+  </footer>
+</body>
+</html>
