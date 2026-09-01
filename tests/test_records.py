@@ -229,7 +229,25 @@ def test_render_markdown_keeps_remote_metadata_inert() -> None:
     assert record.media[0].url == "../private-note"
 
 
-@pytest.mark.parametrize("control_character", ["\t", "\x1b", "\x7f"])
+def test_render_markdown_does_not_link_unsafe_source_url() -> None:
+    source_url = "javascript:alert(1)"
+    record = BookmarkRecordV1(
+        profile="lean",
+        account_id="42",
+        post_id="200",
+        source_url=source_url,
+        text="Primary post",
+        synced_at="2026-07-28T12:00:00Z",
+    )
+
+    markdown = render_markdown(record)
+
+    assert "## Source\n\nView on X\n" in markdown
+    assert f"](<{source_url}>)" not in markdown
+    assert record.source_url == source_url
+
+
+@pytest.mark.parametrize("control_character", ["\t", "\x1b", "\x7f", "\u0080", "\u009f"])
 def test_render_markdown_does_not_link_urls_with_control_characters(
     control_character: str,
 ) -> None:

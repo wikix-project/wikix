@@ -5,6 +5,7 @@ import json
 import os
 import re
 import tempfile
+import unicodedata
 from collections.abc import Iterable, Iterator
 from contextlib import ExitStack
 from datetime import UTC, datetime
@@ -202,7 +203,7 @@ def render_markdown(record: BookmarkRecordV1, *, personal_notes: str = "") -> st
         "",
         "## Source",
         "",
-        f"[View on X]({record.source_url})",
+        _render_link("View on X", record.source_url),
     ]
     urls = record.entities.get("urls", [])
     if urls:
@@ -320,7 +321,7 @@ def _safe_http_url(value: str) -> str | None:
     if (
         not value
         or any(character in value for character in "<>")
-        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
+        or any(unicodedata.category(character) == "Cc" for character in value)
     ):
         return None
     try:
