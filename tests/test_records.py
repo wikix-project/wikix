@@ -8,6 +8,9 @@ from pydantic import ValidationError
 
 from wikix.records import (
     BookmarkRecordV1,
+    MediaRecord,
+    ReferencedPostRecord,
+    ReferenceRecord,
     normalize_pages,
     render_markdown,
     write_jsonl,
@@ -172,8 +175,104 @@ def test_render_markdown_has_versioned_frontmatter_and_safe_literal_text() -> No
         frontmatter["x_referenced_posts"][0]["post"]["text"] == "Complete referenced long-form post"
     )
     assert "```text\nLiteral *markdown* and `code`\nhttps://t.co/a\n```" in markdown
-    assert "[example.com/article](https://example.com/article)" in markdown
+    assert "[example.com/article](<https://example.com/article>)" in markdown
+    assert "```text\nComplete referenced long-form post\n```" in markdown
     assert "<!-- wikix:notes:start -->\nMy own annotation.\n<!-- wikix:notes:end -->" in markdown
+
+
+def test_render_markdown_keeps_remote_metadata_inert() -> None:
+    referenced_text = "<img src=https://tracker.example/pixel>\n![[Private Note]]"
+    record = BookmarkRecordV1(
+        profile="rich",
+        account_id="42",
+        post_id="200",
+        source_url="https://x.com/i/web/status/200",
+        text="Primary post",
+        synced_at="2026-07-28T12:00:00Z",
+        entities={
+            "urls": [
+                {
+                    "expanded_url": "javascript:alert(1)",
+                    "display_url": "unsafe[]_*",
+                }
+            ]
+        },
+        references=[
+            ReferenceRecord(
+                type="quoted",
+                id="201",
+                post=ReferencedPostRecord(id="201", text=referenced_text),
+            )
+        ],
+        media=[
+            MediaRecord(
+                media_key="m1",
+                alt_text="diagram[]_*",
+                url="../private-note",
+            )
+        ],
+    )
+
+    markdown = render_markdown(record)
+
+    assert f"```text\n{referenced_text}\n```" in markdown
+    links_section = markdown.split("## Links\n\n", 1)[1].split("\n\n## Media", 1)[0]
+    media_section = markdown.split("## Media\n\n", 1)[1].split(
+        "\n\n## Direct references",
+        1,
+    )[0]
+    assert links_section == "- unsafe\\[\\]\\_\\*"
+    assert media_section == "- diagram\\[\\]\\_\\*"
+    assert "](<javascript:" not in markdown
+    assert "](<../private-note>)" not in markdown
+    assert record.entities["urls"][0]["expanded_url"] == "javascript:alert(1)"
+    assert record.media[0].url == "../private-note"
+
+
+def test_render_markdown_does_not_link_unsafe_source_url() -> None:
+    source_url = "javascript:alert(1)"
+    record = BookmarkRecordV1(
+        profile="lean",
+        account_id="42",
+        post_id="200",
+        source_url=source_url,
+        text="Primary post",
+        synced_at="2026-07-28T12:00:00Z",
+    )
+
+    markdown = render_markdown(record)
+
+    assert "## Source\n\nView on X\n" in markdown
+    assert f"](<{source_url}>)" not in markdown
+    assert record.source_url == source_url
+
+
+@pytest.mark.parametrize("control_character", ["\t", "\x1b", "\x7f", "\u0080", "\u009f"])
+def test_render_markdown_does_not_link_urls_with_control_characters(
+    control_character: str,
+) -> None:
+    unsafe_url = f"https://example.com/{control_character}private"
+    record = BookmarkRecordV1(
+        profile="lean",
+        account_id="42",
+        post_id="200",
+        source_url="https://x.com/i/web/status/200",
+        text="Primary post",
+        synced_at="2026-07-28T12:00:00Z",
+        entities={
+            "urls": [
+                {
+                    "expanded_url": unsafe_url,
+                    "display_url": "unsafe link",
+                }
+            ]
+        },
+    )
+
+    markdown = render_markdown(record)
+
+    assert "## Links\n\n- unsafe link" in markdown
+    assert f"](<{unsafe_url}>)" not in markdown
 
 
 def test_render_markdown_normalizes_personal_note_trailing_newline() -> None:
