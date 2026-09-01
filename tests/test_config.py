@@ -1,9 +1,11 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from wikix.config import (
     AccountMismatchError,
+    CollectionConfig,
     CollectionExistsError,
     CollectionNotFoundError,
     bind_account,
@@ -11,6 +13,7 @@ from wikix.config import (
     init_collection,
     load_config,
 )
+from wikix.state import CollectionState
 
 
 def test_init_collection_creates_layout_and_loadable_config(tmp_path: Path) -> None:
@@ -70,3 +73,64 @@ def test_bind_account_is_idempotent_but_rejects_different_account(tmp_path: Path
     assert load_config(root).account_id == "42"
     with pytest.raises(AccountMismatchError):
         bind_account(root, "99")
+
+
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"schema_version": 2},
+        {"collection_id": ""},
+        {"client_id": ""},
+        {"callback_port": 0},
+        {"callback_port": 65536},
+        {"account_id": "not-a-number"},
+        {"account_id": "１２３"},
+        {"unexpected": "value"},
+    ],
+)
+def test_collection_config_rejects_unsupported_or_invalid_values(
+    updates: dict[str, object],
+) -> None:
+    values: dict[str, object] = {
+        "collection_id": "collection",
+        "client_id": "client",
+    }
+    values.update(updates)
+
+    with pytest.raises(ValidationError):
+        CollectionConfig.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"schema_version": 2},
+        {"unexpected": "value"},
+    ],
+)
+def test_collection_state_rejects_unsupported_or_unknown_values(
+    values: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        CollectionState.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    ("client_id", "callback_port"),
+    [
+        ("", 8765),
+        ("client", 0),
+        ("client", 65536),
+    ],
+)
+def test_invalid_initialization_does_not_create_a_partial_collection(
+    tmp_path: Path,
+    client_id: str,
+    callback_port: int,
+) -> None:
+    root = tmp_path / "collection"
+
+    with pytest.raises(ValidationError):
+        init_collection(root, client_id=client_id, callback_port=callback_port)
+
+    assert not root.exists()

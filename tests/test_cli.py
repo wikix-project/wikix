@@ -6,7 +6,13 @@ from typer.testing import CliRunner
 
 from wikix import __version__
 from wikix.api import XApiError
-from wikix.auth import CredentialStore, CredentialUnavailableError, OAuthTokens
+from wikix.auth import (
+    CredentialCorruptError,
+    CredentialStore,
+    CredentialUnavailableError,
+    OAuthTokenError,
+    OAuthTokens,
+)
 from wikix.cli import app, cost_summary, run_with_token_refresh
 from wikix.config import CollectionConfig, bind_account, collection_paths, load_config
 from wikix.reconcile import ReconcileConflict, ReconcileResult
@@ -243,6 +249,139 @@ def test_sync_reports_secure_credential_backend_failure(tmp_path: Path, monkeypa
 
     assert result.exit_code == 1
     assert "secure backend unavailable" in result.output
+
+
+def test_sync_reports_corrupt_stored_credentials(tmp_path: Path, monkeypatch) -> None:
+    collection = tmp_path / "Wikix"
+    runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])
+
+    class CorruptLoadStore(MemoryStore):
+        def load(self, collection_id: str) -> OAuthTokens | None:
+            raise CredentialCorruptError("stored X credentials are invalid")
+
+    monkeypatch.setattr("wikix.cli.default_credential_store", CorruptLoadStore)
+
+    result = runner.invoke(
+        app,
+        ["--collection", str(collection), "sync", "--yes"],
+    )
+
+    assert result.exit_code == 1
+    assert "stored X credentials are invalid" in result.output
+
+
+@pytest.mark.parametrize("proactive_refresh", [True, False])
+def test_sync_reports_malformed_token_refresh(
+    tmp_path: Path,
+    monkeypatch,
+    proactive_refresh: bool,
+) -> None:
+    collection = tmp_path / "Wikix"
+    runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])
+    expires_at = datetime.now(UTC) if proactive_refresh else datetime.now(UTC) + timedelta(hours=1)
+    store = MemoryStore(
+        OAuthTokens(
+            access_token="access",
+            refresh_token="refresh",
+            expires_at=expires_at,
+        )
+    )
+    patch_sync_dependencies(
+        monkeypatch,
+        store,
+        XApiError("unauthorized", status_code=401),
+    )
+
+    class FailingRefreshOAuth:
+        def refresh(
+            self,
+            config: CollectionConfig,
+            refresh_token: str,
+        ) -> OAuthTokens:
+            raise OAuthTokenError("X returned a malformed OAuth token response")
+
+    monkeypatch.setattr("wikix.cli.OAuthClient", lambda client: FailingRefreshOAuth())
+
+    result = runner.invoke(
+        app,
+        ["--collection", str(collection), "sync", "--yes"],
+    )
+
+    assert result.exit_code == 1
+    assert "malformed OAuth token response" in result.output
+    assert "Traceback" not in result.output
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["status"], ["sync", "--yes"], ["auth", "login"], ["auth", "logout"]],
+)
+def test_commands_report_corrupt_config_without_traceback(
+    tmp_path: Path,
+    command: list[str],
+) -> None:
+    collection = tmp_path / "Wikix"
+    runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])
+    collection_paths(collection).config.write_text("not = [toml", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["--collection", str(collection), *command],
+    )
+
+    assert result.exit_code == 1
+    assert result.output.startswith("Error:")
+    assert "configuration" in result.output
+    assert "Traceback" not in result.output
+    assert "ValidationError" not in result.output
+
+
+@pytest.mark.parametrize("command", [["status"], ["sync", "--yes"]])
+def test_commands_report_corrupt_state_without_traceback(
+    tmp_path: Path,
+    command: list[str],
+) -> None:
+    collection = tmp_path / "Wikix"
+    runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])
+    collection_paths(collection).state.write_text(
+        '{"schema_version": 2}',
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["--collection", str(collection), *command],
+    )
+
+    assert result.exit_code == 1
+    assert result.output.startswith("Error:")
+    assert "state" in result.output
+    assert "Traceback" not in result.output
+    assert "ValidationError" not in result.output
+
+
+@pytest.mark.parametrize("field", ["pricing_reviewed_at", "policy_reviewed_at"])
+def test_status_reports_invalid_persisted_review_dates(
+    tmp_path: Path,
+    field: str,
+) -> None:
+    collection = tmp_path / "Wikix"
+    runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])
+    collection_paths(collection).state.write_text(
+        f'{{"schema_version": 1, "{field}": "not-a-date"}}',
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["--collection", str(collection), "status"],
+    )
+
+    assert result.exit_code == 1
+    assert result.output.startswith("Error:")
+    assert "state" in result.output
+    assert "Traceback" not in result.output
+    assert "ValueError" not in result.output
 
 
 def test_cost_summary_distinguishes_known_base_and_unknown_expansion_costs() -> None:

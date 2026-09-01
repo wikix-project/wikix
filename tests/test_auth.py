@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from wikix.auth import (
+    CredentialCorruptError,
     CredentialStore,
     CredentialUnavailableError,
     OAuthCallbackError,
@@ -98,6 +99,16 @@ def test_credential_store_round_trips_and_deletes_keyring_tokens() -> None:
     assert loaded.refresh_token == "refresh"
     assert store.load("collection-1") is None
     store.delete("collection-1")
+
+
+@pytest.mark.parametrize("stored", ["not-json", '{"access_token": 42}'])
+def test_credential_store_reports_corrupt_stored_tokens(stored: str) -> None:
+    backend = FakePasswordBackend()
+    backend.set_password("wikix", "collection-1", stored)
+    store = CredentialStore(backend=backend, environ={})
+
+    with pytest.raises(CredentialCorruptError, match="invalid"):
+        store.load("collection-1")
 
 
 def test_default_credential_store_reads_injected_environment_token(monkeypatch) -> None:
@@ -216,6 +227,17 @@ def test_oauth_client_rejects_malformed_or_reduced_scope_token_responses() -> No
             oauth.exchange_code(config(), code="code", code_verifier="verifier")
         with pytest.raises(OAuthTokenError, match="refresh token"):
             oauth.exchange_code(config(), code="code", code_verifier="verifier")
+
+
+def test_oauth_client_rejects_non_json_token_response() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>not json</html>")
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as client,
+        pytest.raises(OAuthTokenError, match="malformed"),
+    ):
+        OAuthClient(client).refresh(config(), "refresh-token")
 
 
 @pytest.mark.parametrize(

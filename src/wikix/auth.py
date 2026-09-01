@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 import keyring
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from wikix.config import CollectionConfig
 
@@ -28,6 +28,10 @@ class PasswordBackend(Protocol):
 
 class CredentialUnavailableError(RuntimeError):
     """Raised when the operating system has no usable secure credential backend."""
+
+
+class CredentialCorruptError(RuntimeError):
+    """Raised when stored credentials cannot be decoded or validated."""
 
 
 class OAuthCallbackError(RuntimeError):
@@ -76,7 +80,12 @@ class CredentialStore:
             ) from error
         if stored is None:
             return None
-        return OAuthTokens.model_validate_json(stored)
+        try:
+            return OAuthTokens.model_validate_json(stored)
+        except ValidationError as error:
+            raise CredentialCorruptError(
+                "stored X credentials are invalid; run `wikix auth login` again"
+            ) from error
 
     def save(self, collection_id: str, tokens: OAuthTokens) -> None:
         try:
@@ -170,7 +179,10 @@ class OAuthClient:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
-        payload: Any = response.json()
+        try:
+            payload: Any = response.json()
+        except ValueError as error:
+            raise OAuthTokenError("X returned a malformed OAuth token response") from error
         if not isinstance(payload, dict):
             raise OAuthTokenError("X returned a malformed OAuth token response")
         access_token = payload.get("access_token")
