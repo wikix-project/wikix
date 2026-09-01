@@ -1,8 +1,21 @@
+import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from wikix.staging import SnapshotStager
+
+
+def _replace_nested(
+    payload: dict[str, Any],
+    path: tuple[str | int, ...],
+    replacement: object,
+) -> None:
+    current: Any = payload
+    for key in path[:-1]:
+        current = current[key]
+    current[path[-1]] = replacement
 
 
 def test_stager_resumes_pages_and_clears_incompatible_snapshot(tmp_path: Path) -> None:
@@ -100,6 +113,99 @@ def test_corrupt_staged_page_payload_is_discarded_for_safe_refetch(tmp_path: Pat
     assert resumed.complete is False
 
 
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    [
+        pytest.param(("data", 0, "author_id"), 42, id="numeric-author-id"),
+        pytest.param(("data", 0, "entities"), [], id="non-object-entities"),
+        pytest.param(("data", 0, "note_tweet", "text"), 42, id="invalid-note-tweet-text"),
+        pytest.param(
+            ("data", 0, "attachments", "media_keys", 0),
+            42,
+            id="non-string-attachment-media-key",
+        ),
+        pytest.param(
+            ("data", 0, "referenced_tweets", 0, "id"),
+            "invalid",
+            id="malformed-referenced-post-id",
+        ),
+        pytest.param(
+            ("data", 0, "referenced_tweets", 0, "type"),
+            42,
+            id="malformed-referenced-post-type",
+        ),
+        pytest.param(
+            ("includes", "users", 0, "username"),
+            42,
+            id="malformed-included-user",
+        ),
+        pytest.param(
+            ("includes", "media", 0, "media_key"),
+            "",
+            id="malformed-included-media",
+        ),
+        pytest.param(
+            ("includes", "tweets", 0, "text"),
+            42,
+            id="malformed-included-post",
+        ),
+        pytest.param(("next_token",), "", id="empty-next-token"),
+    ],
+)
+def test_recovered_bookmark_pages_enforce_live_api_validation(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    replacement: object,
+) -> None:
+    page: dict[str, Any] = {
+        "data": [
+            {
+                "id": "1",
+                "text": "saved",
+                "author_id": "42",
+                "entities": {
+                    "urls": [
+                        {
+                            "url": "https://t.co/example",
+                            "expanded_url": "https://example.com",
+                            "display_url": "example.com",
+                        }
+                    ]
+                },
+                "note_tweet": {"text": "saved in full"},
+                "attachments": {"media_keys": ["3_4"]},
+                "referenced_tweets": [{"id": "2", "type": "quoted"}],
+            }
+        ],
+        "includes": {
+            "users": [{"id": "42", "name": "Ada", "username": "ada"}],
+            "media": [{"media_key": "3_4", "type": "photo"}],
+            "tweets": [{"id": "2", "text": "quoted post", "author_id": "43"}],
+        },
+        "next_token": "next",
+    }
+    stager = SnapshotStager(tmp_path, "fingerprint")
+    stager.prepare()
+    stager.append_page(page, next_token="next")
+
+    page_path = next(stager.directory.glob("page-*.json"))
+    staged_page = json.loads(page_path.read_text(encoding="utf-8"))
+    _replace_nested(staged_page, path, replacement)
+    page_path.write_text(json.dumps(staged_page) + "\n", encoding="utf-8")
+    if path == ("next_token",):
+        manifest_path = stager.directory / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["next_token"] = ""
+        manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+    resumed = SnapshotStager(tmp_path, "fingerprint")
+    resumed.prepare()
+
+    assert resumed.page_count == 0
+    assert resumed.complete is False
+    assert list(resumed.iter_pages()) == []
+
+
 def test_non_object_manifest_and_invalid_page_json_are_discarded(tmp_path: Path) -> None:
     stager = SnapshotStager(tmp_path, "fingerprint")
     stager.prepare()
@@ -122,7 +228,7 @@ def test_folder_metadata_and_membership_pages_validate_when_resumed(tmp_path: Pa
         {
             "kind": "folders",
             "page": {
-                "data": [{"id": "f1", "name": "Research"}],
+                "data": [{"id": "10", "name": "Research"}],
                 "next_token": "next",
             },
         },
@@ -131,8 +237,8 @@ def test_folder_metadata_and_membership_pages_validate_when_resumed(tmp_path: Pa
     folders.append_page(
         {
             "kind": "membership",
-            "folder": {"id": "f1", "name": "Research"},
-            "page": {"data": [{"id": "1", "text": "saved"}]},
+            "folder": {"id": "10", "name": "Research"},
+            "page": {"data": [{"id": "1"}]},
         },
         next_token=None,
     )

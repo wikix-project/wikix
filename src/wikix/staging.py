@@ -7,6 +7,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from wikix.api import IncompleteResponseError, validate_normalized_page
+
 
 class SnapshotStager:
     def __init__(
@@ -165,45 +167,25 @@ class SnapshotStager:
         return token_source.get("next_token") == next_token
 
     def _valid_page(self, page: dict[str, Any]) -> bool:
-        if self._root.name == "bookmarks":
-            return self._valid_post_page(page)
-        kind = page.get("kind")
-        nested = page.get("page")
-        if kind not in {"folders", "membership"} or not isinstance(nested, dict):
-            return False
-        data = nested.get("data")
-        if not isinstance(data, list):
-            return False
-        if kind == "folders":
-            return all(
-                isinstance(item, dict)
-                and isinstance(item.get("id"), str)
-                and isinstance(item.get("name"), str)
-                for item in data
+        try:
+            if self._root.name == "bookmarks":
+                validate_normalized_page(page, item_kind="post")
+                return True
+            kind = page.get("kind")
+            nested = page.get("page")
+            if kind not in {"folders", "membership"} or not isinstance(nested, dict):
+                return False
+            if kind == "folders":
+                validate_normalized_page(nested, item_kind="folder")
+                return True
+            validate_normalized_page(
+                {"data": [page.get("folder")]},
+                item_kind="folder",
             )
-        folder = page.get("folder")
-        return (
-            isinstance(folder, dict)
-            and isinstance(folder.get("id"), str)
-            and isinstance(folder.get("name"), str)
-            and self._valid_post_page(nested)
-        )
-
-    @staticmethod
-    def _valid_post_page(page: dict[str, Any]) -> bool:
-        data = page.get("data")
-        includes = page.get("includes", {})
-        return (
-            isinstance(data, list)
-            and isinstance(includes, dict)
-            and all(
-                isinstance(item, dict)
-                and isinstance(item.get("id"), str)
-                and str(item["id"]).isdecimal()
-                and isinstance(item.get("text"), str)
-                for item in data
-            )
-        )
+            validate_normalized_page(nested, item_kind="membership")
+            return True
+        except IncompleteResponseError:
+            return False
 
     @staticmethod
     def _atomic_write(path: Path, content: str) -> None:

@@ -8,6 +8,8 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field
 
+PageKind = Literal["post", "folder", "membership"]
+
 
 class XApiError(RuntimeError):
     """Raised when X rejects a request."""
@@ -25,6 +27,153 @@ class ApiPage(BaseModel):
     data: list[dict[str, Any]] = Field(default_factory=list)
     includes: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     next_token: str | None = None
+
+
+def validate_normalized_page(
+    payload: object,
+    *,
+    item_kind: PageKind,
+) -> None:
+    """Validate fields retained in an ApiPage or staging file."""
+    if not isinstance(payload, dict):
+        raise IncompleteResponseError("X returned a malformed paginated response")
+    data = payload.get("data")
+    includes = payload.get("includes", {})
+    next_token = payload.get("next_token")
+    if (
+        not isinstance(data, list)
+        or not isinstance(includes, dict)
+        or ("next_token" in payload and (not isinstance(next_token, str) or not next_token))
+    ):
+        raise IncompleteResponseError("X returned a malformed paginated response")
+    validators = {
+        "post": _valid_post,
+        "folder": _valid_folder,
+        "membership": _valid_membership,
+    }
+    validator = validators[item_kind]
+    if not all(validator(item) for item in data):
+        raise IncompleteResponseError(f"X returned a malformed {item_kind} record")
+    if item_kind == "post" and not _valid_includes(includes):
+        raise IncompleteResponseError("X returned malformed post includes")
+
+
+def _valid_post(item: object) -> bool:
+    if not isinstance(item, dict):
+        return False
+    post_id = item.get("id")
+    text = item.get("text")
+    if not _is_ascii_decimal(post_id) or not isinstance(text, str):
+        return False
+    for field in ("created_at", "lang"):
+        if field in item and not isinstance(item[field], str):
+            return False
+    for field in (
+        "author_id",
+        "conversation_id",
+        "in_reply_to_user_id",
+    ):
+        if field in item and not _is_ascii_decimal(item[field]):
+            return False
+    if "entities" in item and not _valid_entities(item["entities"]):
+        return False
+    note_post = item.get("note_tweet")
+    if note_post is not None and (
+        not isinstance(note_post, dict)
+        or not isinstance(note_post.get("text"), str)
+        or ("entities" in note_post and not _valid_entities(note_post["entities"]))
+    ):
+        return False
+    attachments = item.get("attachments")
+    if attachments is not None and (
+        not isinstance(attachments, dict)
+        or not isinstance(attachments.get("media_keys", []), list)
+        or not all(isinstance(media_key, str) for media_key in attachments.get("media_keys", []))
+    ):
+        return False
+    references = item.get("referenced_tweets")
+    return references is None or (
+        isinstance(references, list)
+        and all(
+            isinstance(reference, dict)
+            and _is_ascii_decimal(reference.get("id"))
+            and isinstance(reference.get("type"), str)
+            for reference in references
+        )
+    )
+
+
+def _valid_folder(item: object) -> bool:
+    return (
+        isinstance(item, dict)
+        and _is_ascii_decimal(item.get("id"))
+        and isinstance(item.get("name"), str)
+    )
+
+
+def _valid_membership(item: object) -> bool:
+    return isinstance(item, dict) and _is_ascii_decimal(item.get("id"))
+
+
+def _valid_entities(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    urls = value.get("urls", [])
+    return isinstance(urls, list) and all(
+        isinstance(item, dict)
+        and all(
+            field not in item or isinstance(item[field], str)
+            for field in ("url", "expanded_url", "display_url")
+        )
+        for item in urls
+    )
+
+
+def _valid_includes(includes: dict[str, object]) -> bool:
+    if not all(
+        isinstance(key, str)
+        and isinstance(items, list)
+        and all(isinstance(item, dict) for item in items)
+        for key, items in includes.items()
+    ):
+        return False
+    users = includes.get("users", [])
+    media = includes.get("media", [])
+    tweets = includes.get("tweets", [])
+    return (
+        isinstance(users, list)
+        and all(_valid_user(item) for item in users)
+        and isinstance(media, list)
+        and all(_valid_media(item) for item in media)
+        and isinstance(tweets, list)
+        and all(_valid_post(item) for item in tweets)
+    )
+
+
+def _valid_user(item: object) -> bool:
+    return (
+        isinstance(item, dict)
+        and _is_ascii_decimal(item.get("id"))
+        and all(field not in item or isinstance(item[field], str) for field in ("name", "username"))
+    )
+
+
+def _valid_media(item: object) -> bool:
+    if (
+        not isinstance(item, dict)
+        or not isinstance(item.get("media_key"), str)
+        or not item["media_key"]
+    ):
+        return False
+    if not all(
+        field not in item or isinstance(item[field], str)
+        for field in ("type", "url", "preview_image_url", "alt_text")
+    ):
+        return False
+    return all(
+        field not in item or (isinstance(item[field], int) and not isinstance(item[field], bool))
+        for field in ("duration_ms", "height", "width")
+    )
 
 
 class XApiClient:
@@ -50,9 +199,11 @@ class XApiClient:
             access_token=access_token,
         )
         data = payload.get("data")
-        if not isinstance(data, dict) or "id" not in data:
-            raise IncompleteResponseError("authenticated user response did not include an id")
-        return str(data["id"])
+        account_id = data.get("id") if isinstance(data, dict) else None
+        if not _is_ascii_decimal(account_id):
+            raise IncompleteResponseError("authenticated user response did not include a valid id")
+        assert isinstance(account_id, str)
+        return account_id
 
     def fetch_bookmark_page(
         self,
@@ -105,7 +256,7 @@ class XApiClient:
             access_token=access_token,
             params=params,
         )
-        return self._page(payload, item_kind="post")
+        return self._page(payload, item_kind="membership")
 
     @staticmethod
     def _post_params(*, pagination_token: str | None, rich: bool) -> dict[str, str]:
@@ -137,88 +288,34 @@ class XApiClient:
     def _page(
         payload: dict[str, Any],
         *,
-        item_kind: Literal["post", "folder"],
+        item_kind: PageKind,
     ) -> ApiPage:
         data = payload.get("data", [])
         includes = payload.get("includes", {})
         meta = payload.get("meta")
         result_count = meta.get("result_count") if isinstance(meta, dict) else None
         next_token = meta.get("next_token") if isinstance(meta, dict) else None
+        count_is_valid = (
+            isinstance(data, list)
+            and isinstance(result_count, int)
+            and not isinstance(result_count, bool)
+            and result_count >= 0
+            and result_count == len(data)
+        )
         if (
-            not isinstance(data, list)
-            or not isinstance(includes, dict)
-            or not isinstance(meta, dict)
-            or not isinstance(result_count, int)
-            or isinstance(result_count, bool)
-            or result_count < 0
-            or result_count != len(data)
-            or (next_token is not None and (not isinstance(next_token, str) or not next_token))
+            not isinstance(meta, dict)
+            or (item_kind == "post" and not count_is_valid)
+            or (item_kind != "post" and result_count is not None and not count_is_valid)
         ):
             raise IncompleteResponseError("X returned a malformed paginated response")
-        validator = XApiClient._valid_post if item_kind == "post" else XApiClient._valid_folder
-        if not all(validator(item) for item in data):
-            raise IncompleteResponseError(f"X returned a malformed {item_kind} record")
-        return ApiPage(
-            data=data,
-            includes=includes,
-            next_token=next_token,
-        )
-
-    @staticmethod
-    def _valid_post(item: object) -> bool:
-        if not isinstance(item, dict):
-            return False
-        post_id = item.get("id")
-        text = item.get("text")
-        if not isinstance(post_id, str) or not post_id.isdecimal() or not isinstance(text, str):
-            return False
-        for field in (
-            "author_id",
-            "conversation_id",
-            "created_at",
-            "in_reply_to_user_id",
-            "lang",
-        ):
-            if field in item and not isinstance(item[field], str):
-                return False
-        if "entities" in item and not isinstance(item["entities"], dict):
-            return False
-        note_post = item.get("note_tweet")
-        if note_post is not None and (
-            not isinstance(note_post, dict)
-            or not isinstance(note_post.get("text"), str)
-            or ("entities" in note_post and not isinstance(note_post["entities"], dict))
-        ):
-            return False
-        attachments = item.get("attachments")
-        if attachments is not None and (
-            not isinstance(attachments, dict)
-            or not isinstance(attachments.get("media_keys", []), list)
-            or not all(
-                isinstance(media_key, str) for media_key in attachments.get("media_keys", [])
-            )
-        ):
-            return False
-        references = item.get("referenced_tweets")
-        return references is None or (
-            isinstance(references, list)
-            and all(
-                isinstance(reference, dict)
-                and isinstance(reference.get("id"), str)
-                and str(reference["id"]).isdecimal()
-                and isinstance(reference.get("type"), str)
-                for reference in references
-            )
-        )
-
-    @staticmethod
-    def _valid_folder(item: object) -> bool:
-        return (
-            isinstance(item, dict)
-            and isinstance(item.get("id"), str)
-            and bool(item["id"])
-            and isinstance(item.get("name"), str)
-        )
+        normalized_page = {
+            "data": data,
+            "includes": includes,
+        }
+        if next_token is not None:
+            normalized_page["next_token"] = next_token
+        validate_normalized_page(normalized_page, item_kind=item_kind)
+        return ApiPage(**normalized_page)
 
     def _request_json(
         self,
@@ -264,9 +361,11 @@ class XApiClient:
                 )
 
             try:
-                payload: dict[str, Any] = response.json()
+                payload: Any = response.json()
             except ValueError as error:
                 raise IncompleteResponseError("X returned non-JSON data") from error
+            if not isinstance(payload, dict):
+                raise IncompleteResponseError("X returned JSON data that was not a JSON object")
             if payload.get("errors"):
                 raise IncompleteResponseError(f"X returned partial errors: {payload['errors']}")
             return payload
@@ -278,3 +377,7 @@ class XApiClient:
 def default_api_client(client: httpx.Client) -> XApiClient:
     """Build the production transport with real time and sleep functions."""
     return XApiClient(client, sleep=time.sleep, now=time.time, jitter=random.random)
+
+
+def _is_ascii_decimal(value: object) -> bool:
+    return isinstance(value, str) and value.isascii() and value.isdecimal()
