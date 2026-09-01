@@ -148,28 +148,29 @@ def test_fetch_folders_and_folder_page() -> None:
             return httpx.Response(
                 200,
                 json={
-                    "data": [{"id": "f1", "name": "Research"}],
-                    "meta": {"result_count": 1},
+                    "data": [{"id": "10", "name": "Research"}],
+                    "meta": {},
                 },
             )
         return httpx.Response(
             200,
             json={
-                "data": [{"id": "1", "text": "saved"}],
-                "meta": {"result_count": 1},
+                "data": [{"id": "1"}],
+                "meta": {"next_token": "next"},
             },
         )
 
     http, api = client_with(handler)
     with http:
         folders = api.fetch_folder_page("42", "access")
-        posts = api.fetch_folder_bookmark_page("42", "f1", "access")
+        posts = api.fetch_folder_bookmark_page("42", "10", "access")
 
-    assert folders.data == [{"id": "f1", "name": "Research"}]
-    assert posts.data[0]["id"] == "1"
+    assert folders.data == [{"id": "10", "name": "Research"}]
+    assert posts.data == [{"id": "1"}]
+    assert posts.next_token == "next"
     assert paths == [
         "/2/users/42/bookmarks/folders",
-        "/2/users/42/bookmarks/folders/f1",
+        "/2/users/42/bookmarks/folders/10",
     ]
 
 
@@ -184,7 +185,7 @@ def test_api_rejects_missing_account_id_and_malformed_pages() -> None:
 
     http, api = client_with(handler)
     with http:
-        with pytest.raises(IncompleteResponseError, match="include an id"):
+        with pytest.raises(IncompleteResponseError, match="valid id"):
             api.get_me("access")
         with pytest.raises(IncompleteResponseError, match="malformed paginated"):
             api.fetch_bookmark_page("42", "access")
@@ -208,6 +209,7 @@ def test_api_rejects_empty_object_instead_of_treating_it_as_an_empty_snapshot() 
         {"id": "1", "text": "post", "note_tweet": {"text": 42}},
         {"id": "1", "text": "post", "attachments": {"media_keys": [42]}},
         {"id": "1", "text": "post", "referenced_tweets": [{"id": "bad", "type": "quoted"}]},
+        {"id": "1", "text": "post", "referenced_tweets": [{"id": "2", "type": 42}]},
     ],
 )
 def test_api_rejects_malformed_fields_in_individual_posts(bad_post: object) -> None:
@@ -229,6 +231,80 @@ def test_api_rejects_non_json_success_response() -> None:
     http, api = client_with(handler)
     with http, pytest.raises(IncompleteResponseError, match="non-JSON"):
         api.get_me("access")
+
+
+@pytest.mark.parametrize("payload", [[], "invalid", 1])
+def test_api_rejects_non_object_json(payload: object) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    http, api = client_with(handler)
+    with http, pytest.raises(IncompleteResponseError, match="JSON object"):
+        api.get_me("access")
+
+
+@pytest.mark.parametrize("account_id", [None, "", "abc", "１２３"])
+def test_get_me_rejects_non_ascii_decimal_account_ids(account_id: object) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"data": {"id": account_id}})
+
+    http, api = client_with(handler)
+    with http, pytest.raises(IncompleteResponseError, match="valid id"):
+        api.get_me("access")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "data": [
+                {
+                    "id": "1",
+                    "text": "post",
+                    "entities": {"urls": ["not-an-object"]},
+                }
+            ],
+        },
+        {
+            "data": [{"id": "1", "text": "post"}],
+            "includes": {"users": [{}]},
+        },
+        {
+            "data": [{"id": "1", "text": "post"}],
+            "includes": {"media": [{}]},
+        },
+        {
+            "data": [{"id": "1", "text": "post"}],
+            "includes": {"tweets": [{"id": "2"}]},
+        },
+    ],
+)
+def test_api_rejects_nested_data_normalization_cannot_consume(
+    payload: dict[str, object],
+) -> None:
+    payload["meta"] = {"result_count": 1}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    http, api = client_with(handler)
+    with http, pytest.raises(IncompleteResponseError, match="malformed"):
+        api.fetch_bookmark_page("42", "access", rich=True)
+
+
+def test_folder_page_rejects_a_supplied_mismatched_result_count() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": [{"id": "10", "name": "Research"}],
+                "meta": {"result_count": 2},
+            },
+        )
+
+    http, api = client_with(handler)
+    with http, pytest.raises(IncompleteResponseError, match="malformed paginated"):
+        api.fetch_folder_page("42", "access")
 
 
 def test_api_retries_network_errors_then_fails_actionably() -> None:
@@ -306,7 +382,7 @@ def test_folder_pagination_token_is_forwarded() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured.append(request)
-        return httpx.Response(200, json={"data": [], "meta": {"result_count": 0}})
+        return httpx.Response(200, json={"data": [], "meta": {}})
 
     http, api = client_with(handler)
     with http:

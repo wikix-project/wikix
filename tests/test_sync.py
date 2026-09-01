@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def post(post_id: str, text: str) -> dict[str, str]:
     return {
         "id": post_id,
         "text": text,
-        "author_id": "u1",
+        "author_id": "42",
         "created_at": f"2026-07-{post_id[-1]}T12:00:00.000Z",
     }
 
@@ -115,19 +116,78 @@ def test_sync_engine_resumes_after_interruption_without_touching_existing_output
     assert (paths.bookmarks / "102.md").exists()
 
 
+def test_corrupt_nested_staging_restarts_full_scan(tmp_path: Path) -> None:
+    paths = prepared_collection(tmp_path)
+    SyncEngine(
+        FakeApi({None: ApiPage(data=[post("101", "existing")])}),
+        now=lambda: NOW,
+    ).run(paths, access_token="access")
+    original_jsonl = paths.jsonl.read_text(encoding="utf-8")
+    original_note = (paths.bookmarks / "101.md").read_text(encoding="utf-8")
+
+    interrupted = FakeApi(
+        {
+            None: ApiPage(data=[post("102", "corrupt staged")], next_token="next"),
+            "next": XApiError("interrupted"),
+        }
+    )
+    with pytest.raises(XApiError):
+        SyncEngine(interrupted, now=lambda: NOW).run(paths, access_token="access")
+    assert paths.jsonl.read_text(encoding="utf-8") == original_jsonl
+    assert (paths.bookmarks / "101.md").read_text(encoding="utf-8") == original_note
+
+    staged_page_path = next((paths.metadata / "staging" / "bookmarks").glob("*/page-*.json"))
+    staged_page = json.loads(staged_page_path.read_text(encoding="utf-8"))
+    staged_page["data"][0]["author_id"] = 42
+    staged_page_path.write_text(json.dumps(staged_page) + "\n", encoding="utf-8")
+
+    class RestartingApi(FakeApi):
+        def fetch_bookmark_page(
+            self,
+            account_id: str,
+            access_token: str,
+            *,
+            pagination_token: str | None = None,
+            rich: bool = False,
+        ) -> ApiPage:
+            assert paths.jsonl.read_text(encoding="utf-8") == original_jsonl
+            assert (paths.bookmarks / "101.md").read_text(encoding="utf-8") == original_note
+            return super().fetch_bookmark_page(
+                account_id,
+                access_token,
+                pagination_token=pagination_token,
+                rich=rich,
+            )
+
+    restarted = RestartingApi(
+        {
+            None: ApiPage(data=[post("101", "refreshed")], next_token="fresh-next"),
+            "fresh-next": ApiPage(data=[post("103", "fresh")]),
+        }
+    )
+    result = SyncEngine(restarted, now=lambda: NOW).run(paths, access_token="access")
+
+    assert restarted.bookmark_tokens == [None, "fresh-next"]
+    assert result.record_count == 2
+    assert not (paths.bookmarks / "102.md").exists()
+    assert "corrupt staged" not in paths.jsonl.read_text(encoding="utf-8")
+    assert "refreshed" in (paths.bookmarks / "101.md").read_text(encoding="utf-8")
+    assert (paths.bookmarks / "103.md").exists()
+
+
 def test_sync_engine_opt_in_folders_adds_membership_to_frontmatter(tmp_path: Path) -> None:
     paths = prepared_collection(tmp_path)
     api = FakeApi(
         {None: ApiPage(data=[post("101", "one")])},
-        folders=ApiPage(data=[{"id": "f1", "name": "Research"}]),
-        folder_posts={"f1": ApiPage(data=[post("101", "one")])},
+        folders=ApiPage(data=[{"id": "10", "name": "Research"}]),
+        folder_posts={"10": ApiPage(data=[{"id": "101"}])},
     )
 
     SyncEngine(api, now=lambda: NOW).run(paths, access_token="access", folders=True)
 
     markdown = (paths.bookmarks / "101.md").read_text(encoding="utf-8")
     frontmatter = yaml.safe_load(markdown.split("---", 2)[1])
-    assert frontmatter["x_folders"] == [{"id": "f1", "name": "Research"}]
+    assert frontmatter["x_folders"] == [{"id": "10", "name": "Research"}]
 
 
 def test_folder_metadata_and_membership_pagination_is_complete(tmp_path: Path) -> None:
@@ -149,10 +209,10 @@ def test_folder_metadata_and_membership_pagination_is_complete(tmp_path: Path) -
             self.folder_tokens.append(pagination_token)
             if pagination_token is None:
                 return ApiPage(
-                    data=[{"id": "f1", "name": "Research"}],
+                    data=[{"id": "10", "name": "Research"}],
                     next_token="folder-next",
                 )
-            return ApiPage(data=[{"id": "f2", "name": "Writing"}])
+            return ApiPage(data=[{"id": "20", "name": "Writing"}])
 
         def fetch_folder_bookmark_page(
             self,
@@ -164,9 +224,9 @@ def test_folder_metadata_and_membership_pagination_is_complete(tmp_path: Path) -
             rich: bool = False,
         ) -> ApiPage:
             self.membership_tokens.append((folder_id, pagination_token))
-            if folder_id == "f1" and pagination_token is None:
-                return ApiPage(data=[post("101", "one")], next_token="member-next")
-            return ApiPage(data=[post("102", "two")])
+            if folder_id == "10" and pagination_token is None:
+                return ApiPage(data=[{"id": "101"}], next_token="member-next")
+            return ApiPage(data=[{"id": "102"}])
 
     api = PagedFolderApi()
     SyncEngine(api, now=lambda: NOW).run(paths, access_token="access", folders=True)
@@ -176,13 +236,13 @@ def test_folder_metadata_and_membership_pagination_is_complete(tmp_path: Path) -
     )
     assert api.folder_tokens == [None, "folder-next"]
     assert api.membership_tokens == [
-        ("f1", None),
-        ("f1", "member-next"),
-        ("f2", None),
+        ("10", None),
+        ("10", "member-next"),
+        ("20", None),
     ]
     assert second_frontmatter["x_folders"] == [
-        {"id": "f1", "name": "Research"},
-        {"id": "f2", "name": "Writing"},
+        {"id": "10", "name": "Research"},
+        {"id": "20", "name": "Writing"},
     ]
 
 
@@ -388,8 +448,8 @@ def test_folder_resume_reads_an_already_complete_snapshot(tmp_path: Path) -> Non
     stager.append_page(
         {
             "kind": "membership",
-            "folder": {"id": "f1", "name": "Research"},
-            "page": {"data": [post("101", "one")]},
+            "folder": {"id": "10", "name": "Research"},
+            "page": {"data": [{"id": "101"}]},
         },
         next_token=None,
     )
@@ -401,7 +461,7 @@ def test_folder_resume_reads_an_already_complete_snapshot(tmp_path: Path) -> Non
         access_token="access",
     )
 
-    assert memberships == {"101": [{"id": "f1", "name": "Research"}]}
+    assert memberships == {"101": [{"id": "10", "name": "Research"}]}
 
 
 def test_folder_resume_skips_terminal_membership_page_after_crash(tmp_path: Path) -> None:
@@ -410,15 +470,15 @@ def test_folder_resume_skips_terminal_membership_page_after_crash(tmp_path: Path
     stager.append_page(
         {
             "kind": "folders",
-            "page": {"data": [{"id": "f1", "name": "Research"}]},
+            "page": {"data": [{"id": "10", "name": "Research"}]},
         },
         next_token=None,
     )
     stager.append_page(
         {
             "kind": "membership",
-            "folder": {"id": "f1", "name": "Research"},
-            "page": {"data": [post("101", "one")]},
+            "folder": {"id": "10", "name": "Research"},
+            "page": {"data": [{"id": "101"}]},
         },
         next_token=None,
     )
@@ -431,7 +491,7 @@ def test_folder_resume_skips_terminal_membership_page_after_crash(tmp_path: Path
     )
 
     assert stager.complete is True
-    assert memberships == {"101": [{"id": "f1", "name": "Research"}]}
+    assert memberships == {"101": [{"id": "10", "name": "Research"}]}
 
 
 def test_folder_resume_accepts_terminal_metadata_page_after_crash(tmp_path: Path) -> None:
@@ -440,13 +500,13 @@ def test_folder_resume_accepts_terminal_metadata_page_after_crash(tmp_path: Path
     stager.append_page(
         {
             "kind": "folders",
-            "page": {"data": [{"id": "f1", "name": "Research"}]},
+            "page": {"data": [{"id": "10", "name": "Research"}]},
         },
         next_token=None,
     )
     api = FakeApi(
         {},
-        folder_posts={"f1": ApiPage(data=[post("101", "one")])},
+        folder_posts={"10": ApiPage(data=[{"id": "101"}])},
     )
 
     memberships = SyncEngine(api, now=lambda: NOW)._fetch_folders(
@@ -455,7 +515,7 @@ def test_folder_resume_accepts_terminal_metadata_page_after_crash(tmp_path: Path
         access_token="access",
     )
 
-    assert memberships == {"101": [{"id": "f1", "name": "Research"}]}
+    assert memberships == {"101": [{"id": "10", "name": "Research"}]}
 
 
 def test_folder_resume_rejects_membership_cycle_in_staging(tmp_path: Path) -> None:
@@ -464,7 +524,7 @@ def test_folder_resume_rejects_membership_cycle_in_staging(tmp_path: Path) -> No
     stager.append_page(
         {
             "kind": "folders",
-            "page": {"data": [{"id": "f1", "name": "Research"}]},
+            "page": {"data": [{"id": "10", "name": "Research"}]},
         },
         next_token=None,
     )
@@ -472,9 +532,9 @@ def test_folder_resume_rejects_membership_cycle_in_staging(tmp_path: Path) -> No
         stager.append_page(
             {
                 "kind": "membership",
-                "folder": {"id": "f1", "name": "Research"},
+                "folder": {"id": "10", "name": "Research"},
                 "page": {
-                    "data": [post("101", "one")],
+                    "data": [{"id": "101"}],
                     "next_token": token,
                 },
             },
@@ -496,16 +556,16 @@ def test_folder_fetch_rejects_repeated_membership_token(tmp_path: Path) -> None:
     stager.append_page(
         {
             "kind": "folders",
-            "page": {"data": [{"id": "f1", "name": "Research"}]},
+            "page": {"data": [{"id": "10", "name": "Research"}]},
         },
         next_token=None,
     )
     stager.append_page(
         {
             "kind": "membership",
-            "folder": {"id": "f1", "name": "Research"},
+            "folder": {"id": "10", "name": "Research"},
             "page": {
-                "data": [post("101", "one")],
+                "data": [{"id": "101"}],
                 "next_token": "same",
             },
         },
@@ -515,8 +575,8 @@ def test_folder_fetch_rejects_repeated_membership_token(tmp_path: Path) -> None:
     api = FakeApi(
         {},
         folder_posts={
-            "f1": ApiPage(
-                data=[post("102", "two")],
+            "10": ApiPage(
+                data=[{"id": "102"}],
                 next_token="same",
             )
         },
@@ -533,12 +593,12 @@ def test_folder_fetch_rejects_repeated_membership_token(tmp_path: Path) -> None:
 def test_folder_resume_rejects_metadata_cycle_in_staging(tmp_path: Path) -> None:
     stager = SnapshotStager(tmp_path, "fingerprint", namespace="folders")
     stager.prepare()
-    for token in ("a", "b", "a"):
+    for index, token in enumerate(("a", "b", "a"), start=1):
         stager.append_page(
             {
                 "kind": "folders",
                 "page": {
-                    "data": [{"id": token, "name": token.upper()}],
+                    "data": [{"id": str(index), "name": token.upper()}],
                     "next_token": token,
                 },
             },
@@ -560,7 +620,7 @@ def test_folder_fetch_rejects_repeated_metadata_token(tmp_path: Path) -> None:
         {
             "kind": "folders",
             "page": {
-                "data": [{"id": "f1", "name": "Research"}],
+                "data": [{"id": "10", "name": "Research"}],
                 "next_token": "same",
             },
         },
@@ -569,7 +629,7 @@ def test_folder_fetch_rejects_repeated_metadata_token(tmp_path: Path) -> None:
     api = FakeApi(
         {},
         folders=ApiPage(
-            data=[{"id": "f2", "name": "Writing"}],
+            data=[{"id": "20", "name": "Writing"}],
             next_token="same",
         ),
     )
