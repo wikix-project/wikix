@@ -267,6 +267,103 @@ def test_rate_limits_do_not_consume_transient_failure_retry_budget() -> None:
     assert sleeps == [1.0, 1.0, 1.0]
 
 
+def test_persistent_rate_limit_stops_after_dedicated_budget() -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls > 4:
+            raise AssertionError("rate-limit loop exceeded its budget")
+        return httpx.Response(429, headers={"x-rate-limit-reset": "101"})
+
+    http, api = client_with(handler, sleeps=sleeps, now=100.0)
+    with http, pytest.raises(XApiError) as captured:
+        api.get_me("access")
+
+    assert captured.value.status_code == 429
+    assert calls == 4
+    assert sleeps == [1.0, 1.0, 1.0]
+
+
+def test_rate_limit_waits_do_not_exceed_cumulative_budget() -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls > 3:
+            raise AssertionError("rate-limit wait exceeded its cumulative budget")
+        return httpx.Response(429, headers={"x-rate-limit-reset": "700"})
+
+    http, api = client_with(handler, sleeps=sleeps, now=100.0)
+    with http, pytest.raises(XApiError) as captured:
+        api.get_me("access")
+
+    assert captured.value.status_code == 429
+    assert calls == 3
+    assert sleeps == [600.0, 300.0]
+
+
+@pytest.mark.parametrize("reset_header", [None, "not-a-number", "nan", "inf", "-inf"])
+def test_invalid_rate_limit_reset_values_use_safe_default_wait(
+    reset_header: str | None,
+) -> None:
+    headers = {} if reset_header is None else {"x-rate-limit-reset": reset_header}
+    responses = [
+        httpx.Response(429, headers=headers),
+        httpx.Response(200, json={"data": {"id": "42"}}),
+    ]
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return responses.pop(0)
+
+    http, api = client_with(handler, sleeps=sleeps, now=100.0)
+    with http:
+        assert api.get_me("access") == "42"
+
+    assert sleeps == [60.0]
+
+
+def test_past_rate_limit_reset_uses_safe_default_wait() -> None:
+    responses = [
+        httpx.Response(429, headers={"x-rate-limit-reset": "99"}),
+        httpx.Response(200, json={"data": {"id": "42"}}),
+    ]
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return responses.pop(0)
+
+    http, api = client_with(handler, sleeps=sleeps, now=100.0)
+    with http:
+        assert api.get_me("access") == "42"
+
+    assert sleeps == [60.0]
+
+
+def test_rate_limit_and_transient_failures_use_independent_budgets() -> None:
+    responses = [
+        httpx.Response(429, headers={"x-rate-limit-reset": "101"}),
+        httpx.Response(503),
+        httpx.Response(503),
+        httpx.Response(200, json={"data": {"id": "42"}}),
+    ]
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return responses.pop(0)
+
+    http, api = client_with(handler, sleeps=sleeps, now=100.0)
+    with http:
+        assert api.get_me("access") == "42"
+
+    assert sleeps == [1.0, 1.0, 2.0]
+
+
 def test_transient_backoff_includes_injected_jitter() -> None:
     responses = [
         httpx.Response(503),
