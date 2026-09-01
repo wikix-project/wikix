@@ -1,5 +1,6 @@
 """Official X API transport."""
 
+import math
 import random
 import time
 from collections.abc import Callable
@@ -7,6 +8,10 @@ from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field
+
+_MAX_RATE_LIMIT_RESPONSES = 3
+_MAX_CUMULATIVE_RATE_LIMIT_WAIT_SECONDS = 900.0
+_DEFAULT_RATE_LIMIT_WAIT_SECONDS = 60.0
 
 
 class XApiError(RuntimeError):
@@ -229,6 +234,8 @@ class XApiClient:
         params: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         failure_attempt = 0
+        rate_limit_responses = 0
+        rate_limit_waited = 0.0
         while True:
             try:
                 response = self._client.request(
@@ -245,12 +252,33 @@ class XApiClient:
                 continue
 
             if response.status_code == 429:
+                if (
+                    rate_limit_responses >= _MAX_RATE_LIMIT_RESPONSES
+                    or rate_limit_waited >= _MAX_CUMULATIVE_RATE_LIMIT_WAIT_SECONDS
+                ):
+                    raise XApiError(
+                        "X API rate-limit wait budget exhausted",
+                        status_code=429,
+                    )
+
                 current_time = self._now()
+                reset_header = response.headers.get("x-rate-limit-reset")
                 try:
-                    reset = float(response.headers.get("x-rate-limit-reset", current_time + 60))
+                    reset = float(reset_header) if reset_header is not None else math.nan
                 except ValueError:
-                    reset = current_time + 60
-                self._sleep(max(reset - current_time, 1.0))
+                    reset = math.nan
+
+                if not math.isfinite(current_time) or not math.isfinite(reset):
+                    requested_wait = _DEFAULT_RATE_LIMIT_WAIT_SECONDS
+                else:
+                    requested_wait = max(reset - current_time, 1.0)
+                wait = min(
+                    requested_wait,
+                    _MAX_CUMULATIVE_RATE_LIMIT_WAIT_SECONDS - rate_limit_waited,
+                )
+                self._sleep(wait)
+                rate_limit_responses += 1
+                rate_limit_waited += wait
                 continue
             if response.status_code >= 500 and failure_attempt + 1 < self._max_attempts:
                 self._sleep(self._backoff(failure_attempt))
