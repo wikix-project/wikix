@@ -10,6 +10,7 @@ from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, Field
@@ -209,22 +210,29 @@ def render_markdown(record: BookmarkRecordV1, *, personal_notes: str = "") -> st
         for item in urls:
             url = str(item.get("expanded_url") or item.get("url") or "")
             label = str(item.get("display_url") or url)
-            sections.append(f"- [{label}]({url})")
+            sections.append(f"- {_render_link(label, url)}")
     if record.media and any(item.url or item.alt_text or item.type for item in record.media):
         sections.extend(["", "## Media", ""])
         for item in record.media:
             label = item.alt_text or item.type or item.media_key
-            sections.append(f"- [{label}]({item.url})" if item.url else f"- {label}")
+            sections.append(
+                f"- {_render_link(label, item.url)}"
+                if item.url
+                else f"- {_escape_markdown_label(label)}"
+            )
     expanded_references = [reference for reference in record.references if reference.post]
     if expanded_references:
         sections.extend(["", "## Direct references", ""])
         for reference in expanded_references:
             assert reference.post is not None
+            fence = _safe_fence(reference.post.text)
             sections.extend(
                 [
-                    f"### {reference.type.title()} post {reference.id}",
+                    f"### {_escape_markdown_label(reference.type.title())} post {reference.id}",
                     "",
+                    f"{fence}text",
                     reference.post.text,
+                    fence,
                     "",
                     f"[View referenced post](https://x.com/i/web/status/{reference.id})",
                     "",
@@ -301,6 +309,34 @@ def _exact_post_text(post: dict[str, Any]) -> str:
 def _safe_fence(text: str) -> str:
     longest = max((len(match.group()) for match in re.finditer(r"`+", text)), default=0)
     return "`" * max(3, longest + 1)
+
+
+def _escape_markdown_label(value: str) -> str:
+    normalized = re.sub(r"[\x00-\x1f\x7f]", " ", value)
+    return re.sub(r"([\\`*_\[\]<>])", r"\\\1", normalized)
+
+
+def _safe_http_url(value: str) -> str | None:
+    if (
+        not value
+        or any(character in value for character in "<>")
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
+    ):
+        return None
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+    except ValueError:
+        return None
+    if parsed.scheme.lower() not in {"http", "https"} or not hostname:
+        return None
+    return value
+
+
+def _render_link(label: str, url: str) -> str:
+    escaped_label = _escape_markdown_label(label)
+    safe_url = _safe_http_url(url)
+    return f"[{escaped_label}](<{safe_url}>)" if safe_url else escaped_label
 
 
 def _record_sort_key(record: BookmarkRecordV1) -> tuple[str, str]:
