@@ -154,6 +154,31 @@ def test_init_and_status_commands(tmp_path: Path) -> None:
     assert "Account: not authenticated" in status.output
 
 
+@pytest.mark.parametrize(
+    ("name", "arguments"),
+    [
+        ("empty-client", ["--client-id", ""]),
+        ("invalid-port", ["--client-id", "client-1", "--callback-port", "0"]),
+    ],
+)
+def test_init_rejects_invalid_configuration_with_concise_error(
+    tmp_path: Path,
+    name: str,
+    arguments: list[str],
+) -> None:
+    collection = tmp_path / name
+
+    result = runner.invoke(app, ["init", str(collection), *arguments])
+
+    assert result.exit_code == 1
+    assert result.output == "Error: invalid collection configuration\n"
+    assert len(result.output.splitlines()) == 1
+    assert "ValidationError" not in result.output
+    assert "input_value" not in result.output
+    assert "errors.pydantic.dev" not in result.output
+    assert not collection.exists()
+
+
 def test_init_command_reports_existing_collection(tmp_path: Path) -> None:
     collection = tmp_path / "Wikix"
     runner.invoke(app, ["init", str(collection), "--client-id", "client-1"])

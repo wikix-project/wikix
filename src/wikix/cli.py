@@ -161,6 +161,8 @@ def init_command(
 ) -> None:
     try:
         paths = init_collection(path, client_id=client_id, callback_port=callback_port)
+    except ValidationError:
+        _fail("invalid collection configuration")
     except Exception as error:
         _fail(str(error))
     typer.echo(f"Initialized Wikix collection at {paths.root}")
