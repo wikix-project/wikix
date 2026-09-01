@@ -99,4 +99,17 @@ def test_ci_package_smoke_builds_installs_verifies_and_uninstalls_without_publis
         "package-smoke/bin/wikix --version",
         "uv pip uninstall --python package-smoke wikix",
     ]
-    assert all("publish" not in step.get("run", "").lower() for step in package_smoke["steps"])
+
+
+def test_ci_has_no_publishing_action_or_command() -> None:
+    workflow = _load_workflow(CI_WORKFLOW)
+    step_interfaces = [
+        step[key].lower()
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        for key in ("uses", "run")
+        if key in step
+    ]
+
+    assert step_interfaces
+    assert all("publish" not in interface for interface in step_interfaces)
