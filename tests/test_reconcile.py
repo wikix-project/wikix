@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from wikix.config import init_collection
 from wikix.reconcile import (
@@ -207,6 +208,19 @@ def test_reconcile_rejects_mixed_account_snapshot_before_committing(tmp_path: Pa
         reconcile_collection(paths, [record(), other_account], synced_at=SYNCED)
 
     assert paths.jsonl.read_text(encoding="utf-8") == ""
+
+
+def test_reconcile_rejects_unsupported_state_before_mutating_output(tmp_path: Path) -> None:
+    paths = init_collection(tmp_path / "collection", client_id="client")
+    paths.jsonl.write_text("existing\n", encoding="utf-8")
+    paths.state.write_text('{"schema_version":2}\n', encoding="utf-8")
+
+    with pytest.raises(ValidationError):
+        reconcile_collection(paths, [record()], synced_at=SYNCED)
+
+    assert paths.jsonl.read_text(encoding="utf-8") == "existing\n"
+    assert not (paths.bookmarks / "100.md").exists()
+    assert not (paths.metadata / "reconcile-journal.json").exists()
 
 
 def test_first_reconcile_conflicts_with_unmanaged_existing_note(tmp_path: Path) -> None:

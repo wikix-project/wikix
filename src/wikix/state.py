@@ -2,19 +2,25 @@
 
 import json
 import os
+from datetime import date
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from wikix.config import CollectionPaths
 
 
 class StateConflict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     post_id: str
     reason: str
 
 
 class CollectionState(BaseModel):
-    schema_version: int = 1
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal[1] = 1
     account_id: str | None = None
     last_sync: str | None = None
     last_profile: str | None = None
@@ -25,6 +31,15 @@ class CollectionState(BaseModel):
     pending: dict[str, object] | None = None
     pricing_reviewed_at: str = "2026-07-28"
     policy_reviewed_at: str = "2026-07-28"
+
+    @field_validator("pricing_reviewed_at", "policy_reviewed_at")
+    @classmethod
+    def validate_review_date(cls, value: str) -> str:
+        try:
+            date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("review date must be a valid ISO date") from error
+        return value
 
 
 def load_state(paths: CollectionPaths) -> CollectionState:

@@ -6,9 +6,10 @@ import tomllib
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import tomli_w
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CollectionExistsError(RuntimeError):
@@ -26,11 +27,20 @@ class AccountMismatchError(RuntimeError):
 class CollectionConfig(BaseModel):
     """Persisted non-secret collection settings."""
 
-    schema_version: int = 1
-    collection_id: str
-    client_id: str
-    callback_port: int = 8765
-    account_id: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal[1] = 1
+    collection_id: str = Field(min_length=1)
+    client_id: str = Field(min_length=1)
+    callback_port: int = Field(default=8765, ge=1, le=65535)
+    account_id: str | None = Field(default=None, pattern=r"^[0-9]+$")
+
+    @field_validator("account_id")
+    @classmethod
+    def validate_account_id(cls, value: str | None) -> str | None:
+        if value is not None and not value.isascii():
+            raise ValueError("account_id must contain only ASCII decimal digits")
+        return value
 
 
 @dataclass(frozen=True)
@@ -65,16 +75,16 @@ def init_collection(root: Path, *, client_id: str, callback_port: int = 8765) ->
     if paths.config.exists():
         raise CollectionExistsError(f"collection already exists at {paths.root}")
 
-    paths.bookmarks.mkdir(parents=True, exist_ok=True)
-    paths.review.mkdir(parents=True, exist_ok=True)
-    paths.metadata.mkdir(parents=True, exist_ok=True)
-    paths.jsonl.touch(exist_ok=True)
-
     config = CollectionConfig(
         collection_id=str(uuid.uuid4()),
         client_id=client_id,
         callback_port=callback_port,
     )
+    paths.bookmarks.mkdir(parents=True, exist_ok=True)
+    paths.review.mkdir(parents=True, exist_ok=True)
+    paths.metadata.mkdir(parents=True, exist_ok=True)
+    paths.jsonl.touch(exist_ok=True)
+
     state: dict[str, object] = {
         "schema_version": 1,
         "account_id": None,

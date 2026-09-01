@@ -1,5 +1,6 @@
 """Wikix command-line interface."""
 
+import tomllib
 import webbrowser
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -10,10 +11,12 @@ from typing import Annotated, Never
 import httpx
 import portalocker
 import typer
+from pydantic import ValidationError
 
 from wikix import __version__
 from wikix.api import XApiError, default_api_client
 from wikix.auth import (
+    CredentialCorruptError,
     CredentialStore,
     CredentialUnavailableError,
     OAuthCallbackError,
@@ -35,7 +38,7 @@ from wikix.config import (
     init_collection,
     load_config,
 )
-from wikix.state import load_state
+from wikix.state import CollectionState, load_state
 from wikix.sync import SyncEngine
 
 app = typer.Typer(no_args_is_help=True)
@@ -158,6 +161,8 @@ def init_command(
 ) -> None:
     try:
         paths = init_collection(path, client_id=client_id, callback_port=callback_port)
+    except ValidationError:
+        _fail("invalid collection configuration")
     except Exception as error:
         _fail(str(error))
     typer.echo(f"Initialized Wikix collection at {paths.root}")
@@ -166,8 +171,8 @@ def init_command(
 @app.command()
 def status(ctx: typer.Context) -> None:
     paths = _resolve_paths(ctx)
-    config = load_config(paths.root)
-    state = load_state(paths)
+    config = _load_config_or_fail(paths)
+    state = _load_state_or_fail(paths)
     pending = (paths.metadata / "staging").exists() or (
         paths.metadata / "reconcile-journal.json"
     ).exists()
@@ -194,8 +199,8 @@ def sync(
     yes: bool = typer.Option(False, "--yes"),
 ) -> None:
     paths = _resolve_paths(ctx)
-    config = load_config(paths.root)
-    state = load_state(paths)
+    config = _load_config_or_fail(paths)
+    state = _load_state_or_fail(paths)
     typer.echo(
         cost_summary(
             state.record_count,
@@ -210,7 +215,7 @@ def sync(
     try:
         store = default_credential_store()
         tokens = store.load(config.collection_id)
-    except CredentialUnavailableError as error:
+    except (CredentialCorruptError, CredentialUnavailableError) as error:
         _fail(str(error))
     if tokens is None:
         _fail("No X credentials found. Run `wikix auth login` first.")
@@ -231,7 +236,13 @@ def sync(
                 config=config,
                 store=store,
             )
-    except (XApiError, httpx.HTTPError, portalocker.LockException, ValueError) as error:
+    except (
+        OAuthTokenError,
+        XApiError,
+        httpx.HTTPError,
+        portalocker.LockException,
+        ValueError,
+    ) as error:
         _fail(str(error))
 
     typer.echo(
@@ -248,7 +259,7 @@ def sync(
 @auth_app.command("login")
 def auth_login(ctx: typer.Context) -> None:
     paths = _resolve_paths(ctx)
-    config = load_config(paths.root)
+    config = _load_config_or_fail(paths)
     request = build_authorization_request(config)
     try:
         with OAuthCallbackServer(
@@ -300,10 +311,10 @@ def auth_login(ctx: typer.Context) -> None:
 @auth_app.command("logout")
 def auth_logout(ctx: typer.Context) -> None:
     paths = _resolve_paths(ctx)
-    config = load_config(paths.root)
+    config = _load_config_or_fail(paths)
     try:
         default_credential_store().delete(config.collection_id)
-    except CredentialUnavailableError as error:
+    except (CredentialCorruptError, CredentialUnavailableError) as error:
         _fail(str(error))
     typer.echo("Removed Wikix credentials from secure storage.")
 
@@ -319,6 +330,24 @@ def _resolve_paths(ctx: typer.Context) -> CollectionPaths:
         return discover_collection(Path.cwd())
     except CollectionNotFoundError as error:
         _fail(str(error))
+
+
+def _load_config_or_fail(paths: CollectionPaths) -> CollectionConfig:
+    try:
+        return load_config(paths.root)
+    except OSError as error:
+        _fail(f"could not read collection configuration at {paths.config}: {error}")
+    except (tomllib.TOMLDecodeError, UnicodeDecodeError, ValidationError):
+        _fail(f"invalid collection configuration at {paths.config}")
+
+
+def _load_state_or_fail(paths: CollectionPaths) -> CollectionState:
+    try:
+        return load_state(paths)
+    except OSError as error:
+        _fail(f"could not read collection state at {paths.state}: {error}")
+    except (UnicodeDecodeError, ValidationError):
+        _fail(f"invalid collection state at {paths.state}")
 
 
 def _fail(message: str) -> Never:
