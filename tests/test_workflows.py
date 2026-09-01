@@ -35,6 +35,44 @@ EXPECTED_ACTIONS = {
     "actions/attest": ("1e69f48acb82d1966a394da916b4c1698aa569d6", "v4.2.2"),
 }
 
+CHECKOUT = f"actions/checkout@{EXPECTED_ACTIONS['actions/checkout'][0]}"
+SETUP_PYTHON = f"actions/setup-python@{EXPECTED_ACTIONS['actions/setup-python'][0]}"
+SETUP_UV = f"astral-sh/setup-uv@{EXPECTED_ACTIONS['astral-sh/setup-uv'][0]}"
+EXPECTED_CI_STEP_INTERFACES = {
+    "quality": [
+        ("uses", CHECKOUT),
+        ("uses", SETUP_PYTHON),
+        ("uses", SETUP_UV),
+        ("run", "uv sync --extra dev --frozen"),
+        ("run", "uv run ruff check ."),
+        ("run", "uv run ruff format --check ."),
+        ("run", "uv run mypy src"),
+        ("run", "uv run pytest --cov=wikix --cov-report=term-missing"),
+    ],
+    "tests": [
+        ("uses", CHECKOUT),
+        ("uses", SETUP_PYTHON),
+        ("uses", SETUP_UV),
+        ("run", "uv sync --extra dev --frozen"),
+        ("run", "uv run pytest"),
+    ],
+    "onboarding-smoke": [
+        ("uses", CHECKOUT),
+        ("uses", SETUP_UV),
+        ("run", "uv tool install --python 3.12 ."),
+        ("run", "uv tool run --from . --python 3.12 wikix --version"),
+    ],
+    "package-smoke": [
+        ("uses", CHECKOUT),
+        ("uses", SETUP_UV),
+        ("run", "uv build"),
+        ("run", "uv venv package-smoke"),
+        ("run", "uv pip install --python package-smoke dist/*.whl"),
+        ("run", "package-smoke/bin/wikix --version"),
+        ("run", "uv pip uninstall --python package-smoke wikix"),
+    ],
+}
+
 
 def _load_workflow(path: Path) -> dict[str, Any]:
     workflow = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
@@ -101,15 +139,13 @@ def test_ci_package_smoke_builds_installs_verifies_and_uninstalls_without_publis
     ]
 
 
-def test_ci_has_no_publishing_action_or_command() -> None:
+def test_ci_uses_only_approved_step_interfaces() -> None:
     workflow = _load_workflow(CI_WORKFLOW)
-    step_interfaces = [
-        step[key].lower()
-        for job in workflow["jobs"].values()
-        for step in job["steps"]
-        for key in ("uses", "run")
-        if key in step
-    ]
+    step_interfaces = {
+        job_name: [
+            (key, step[key]) for step in job["steps"] for key in ("uses", "run") if key in step
+        ]
+        for job_name, job in workflow["jobs"].items()
+    }
 
-    assert step_interfaces
-    assert all("publish" not in interface for interface in step_interfaces)
+    assert step_interfaces == EXPECTED_CI_STEP_INTERFACES
