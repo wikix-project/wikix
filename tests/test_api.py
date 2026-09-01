@@ -328,9 +328,10 @@ def test_invalid_rate_limit_reset_values_use_safe_default_wait(
     assert sleeps == [60.0]
 
 
-def test_past_rate_limit_reset_uses_safe_default_wait() -> None:
+@pytest.mark.parametrize("reset_header", ["99", "100", "100.5"])
+def test_finite_rate_limit_reset_waits_at_least_one_second(reset_header: str) -> None:
     responses = [
-        httpx.Response(429, headers={"x-rate-limit-reset": "99"}),
+        httpx.Response(429, headers={"x-rate-limit-reset": reset_header}),
         httpx.Response(200, json={"data": {"id": "42"}}),
     ]
     sleeps: list[float] = []
@@ -342,7 +343,7 @@ def test_past_rate_limit_reset_uses_safe_default_wait() -> None:
     with http:
         assert api.get_me("access") == "42"
 
-    assert sleeps == [60.0]
+    assert sleeps == [1.0]
 
 
 def test_rate_limit_and_transient_failures_use_independent_budgets() -> None:

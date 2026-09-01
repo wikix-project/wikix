@@ -268,14 +268,10 @@ class XApiClient:
                 except ValueError:
                     reset = math.nan
 
-                if (
-                    not math.isfinite(current_time)
-                    or not math.isfinite(reset)
-                    or reset <= current_time
-                ):
+                if not math.isfinite(current_time) or not math.isfinite(reset):
                     requested_wait = _DEFAULT_RATE_LIMIT_WAIT_SECONDS
                 else:
-                    requested_wait = reset - current_time
+                    requested_wait = max(reset - current_time, 1.0)
                 wait = min(
                     requested_wait,
                     _MAX_CUMULATIVE_RATE_LIMIT_WAIT_SECONDS - rate_limit_waited,

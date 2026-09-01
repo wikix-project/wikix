@@ -77,9 +77,10 @@ bookmark returns, the annotation is restored.
   the complete remote snapshot succeeds.
 - A collection lock prevents concurrent syncs.
 - For one API request, Wikix waits through at most three rate-limit responses and at most 900
-  cumulative seconds. A missing, invalid, non-finite, or past reset time uses a 60-second wait.
-  The rate-limit and transient network/5xx retry budgets are independent. Persistent rate limiting
-  exits without changing the existing export; the staged scan can be resumed later.
+  cumulative seconds. A missing, invalid, or non-finite reset time uses a 60-second wait; valid
+  finite reset times wait at least one second. The rate-limit and transient network/5xx retry
+  budgets are independent. Persistent rate limiting exits without changing the existing export;
+  the staged scan can be resumed later.
 - Authentication, credit, malformed-response, and unresolved partial-error failures do not alter
   existing exports.
 - Access and refresh tokens use the operating system credential store. `wikix auth logout` removes

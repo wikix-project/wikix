@@ -263,9 +263,10 @@ wikix sync
 - **Out of credits:** add credits in the Developer Console before retrying. Wikix cannot bypass X
   billing.
 - **HTTP 429:** for one API request, Wikix waits at most three times and 900 seconds total. A
-  missing, invalid, non-finite, or past reset time uses a 60-second wait. This rate-limit budget
-  is independent from transient network and 5xx retries. If it is exhausted, the sync exits
-  without changing the existing export; rerun `wikix sync` later to resume compatible staging.
+  missing, invalid, or non-finite reset time uses a 60-second wait; valid finite reset times wait
+  at least one second. This rate-limit budget is independent from transient network and 5xx
+  retries. If it is exhausted, the sync exits without changing the existing export; rerun
+  `wikix sync` later to resume compatible staging.
 - **The sync was interrupted:** run `wikix sync` again from the same collection so compatible
   staged progress can resume.
 - **A managed-content conflict is reported:** open the named file and resolve the reported edit;
