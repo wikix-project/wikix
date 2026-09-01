@@ -4,6 +4,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
+GUIDE_URL = "/guide.html"
+QUICK_SETUP_URL = "/quick-setup.html"
 GETTING_STARTED = "https://github.com/wikix-project/wikix/blob/HEAD/docs/getting-started.md"
 PRIVACY = "https://github.com/wikix-project/wikix/blob/HEAD/PRIVACY.md"
 SECURITY = "https://github.com/wikix-project/wikix/blob/HEAD/SECURITY.md"
@@ -102,7 +104,9 @@ def test_landing_page_is_user_first_and_literal() -> None:
     assert "Alpha" in content
     assert "install from source" in content
     assert SOURCE_INSTALL_UV in content
-    assert GETTING_STARTED in parser.links
+    assert GUIDE_URL in parser.links
+    assert QUICK_SETUP_URL in parser.links
+    assert "/guide.html#quick-setup" not in parser.links
 
 
 def test_landing_page_leads_with_exported_note_and_first_action() -> None:
@@ -123,7 +127,9 @@ def test_landing_page_leads_with_exported_note_and_first_action() -> None:
     assert "Useful idea to revisit when planning local search." in content
     assert "Synthetic shortened example" in content
     assert html.index('class="hero-copy"') < html.index('class="note-specimen"')
-    assert GETTING_STARTED in parser.links
+    assert GUIDE_URL in parser.links
+    assert QUICK_SETUP_URL in parser.links
+    assert "/guide.html#quick-setup" not in parser.links
 
 
 def test_landing_page_uses_three_evidence_backed_value_pillars() -> None:
@@ -152,7 +158,7 @@ def test_landing_page_explains_workflow_and_material_requirements() -> None:
         "may incur X API charges",
     ):
         assert expected in content
-    assert GETTING_STARTED in parser.links_by_section["requirements"]
+    assert GUIDE_URL in parser.links_by_section["requirements"]
 
 
 def test_landing_page_combines_privacy_and_reliability_as_three_trust_statements() -> None:
@@ -178,7 +184,7 @@ def test_landing_page_ends_with_source_install_action() -> None:
 
     assert "If Wikix fits your setup, create your first local collection." in content
     assert SOURCE_INSTALL_UV in content
-    assert GETTING_STARTED in parser.links_by_section["start"]
+    assert GUIDE_URL in parser.links_by_section["start"]
     assert GITHUB in parser.links_by_section["start"]
 
 
@@ -198,6 +204,8 @@ def test_footer_links_to_project_resources_and_license() -> None:
 
     assert "Footer navigation" in parser.nav_labels
     assert parser.footer_links == [
+        GUIDE_URL,
+        QUICK_SETUP_URL,
         GETTING_STARTED,
         PRIVACY,
         SECURITY,
@@ -221,6 +229,7 @@ def test_landing_page_is_static_accessible_and_links_to_user_resources() -> None
     assert {"value", "how-it-works", "requirements", "privacy", "start"}.issubset(parser.ids)
     assert "#main-content" in parser.links
     assert "https://github.com/wikix-project/wikix" in parser.links
+    assert GUIDE_URL in parser.links
     assert all(link.startswith(("https://", "#", "/")) for link in parser.links)
     assert parser.meta["description"].startswith("Export X bookmarks")
 
@@ -277,6 +286,7 @@ def test_styles_encode_compact_note_led_responsive_layout() -> None:
         ".trust-list",
         ".start-section",
         ".install-panel",
+        ".guide-command code",
     ):
         assert selector in stylesheet
     assert "grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);" in stylesheet
@@ -284,6 +294,7 @@ def test_styles_encode_compact_note_led_responsive_layout() -> None:
     assert ".site-header nav a:not(:last-child)" in mobile_styles
     assert "display: none;" in mobile_styles
     assert "white-space: pre-wrap;" in mobile_styles
+    assert "white-space: inherit;" in stylesheet
     assert "overflow-wrap: anywhere;" in mobile_styles
 
 
@@ -307,6 +318,8 @@ def test_vercel_upload_is_limited_to_landing_page_files() -> None:
     assert patterns == [
         "/*",
         "!index.html",
+        "!guide.html",
+        "!quick-setup.html",
         "!styles.css",
         "!vercel.json",
         "!assets",
@@ -336,6 +349,8 @@ def test_landing_page_assets_are_local_and_deployable() -> None:
     assert patterns == [
         "/*",
         "!index.html",
+        "!guide.html",
+        "!quick-setup.html",
         "!styles.css",
         "!vercel.json",
         "!assets",

@@ -482,6 +482,152 @@ footer nav {
   gap: 10px 18px;
 }
 
+.guide-main {
+  max-width: 800px;
+}
+
+.guide-intro {
+  display: grid;
+  gap: 20px;
+  padding-block: clamp(56px, 7vw, 72px);
+}
+
+.guide-intro h1 {
+  max-width: 14ch;
+}
+
+.guide-deck {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.12rem;
+}
+
+.guide-quick-link {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.guide-toc {
+  max-width: 42rem;
+  margin-top: 10px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.guide-toc-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font: 0.76rem/1.5 "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.guide-toc ol {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 28px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.guide-toc li {
+  padding-left: 4px;
+}
+
+.guide-section {
+  display: grid;
+  gap: 16px;
+  padding-block: clamp(44px, 6vw, 56px);
+}
+
+.guide-section > * {
+  max-width: 44rem;
+}
+
+.guide-section > .section-kicker,
+.guide-section > h2,
+.guide-section > h3,
+.guide-section > p,
+.guide-section > pre,
+.guide-section > .guide-detail-grid {
+  margin-block: 0;
+}
+
+.guide-section h2 {
+  max-width: 26ch;
+}
+
+.guide-section h3 {
+  margin-top: 8px;
+}
+
+.guide-section p {
+  color: var(--muted);
+}
+
+.guide-section strong,
+.guide-section code {
+  color: var(--ink);
+}
+
+.guide-callout {
+  padding-inline: 20px;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.guide-command-section {
+  padding-block: clamp(44px, 6vw, 56px);
+}
+
+.guide-command {
+  width: 100%;
+  border: 1px solid var(--rule);
+  background: var(--code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.guide-command code {
+  white-space: inherit;
+  overflow-wrap: inherit;
+}
+
+.guide-note {
+  font: 0.86rem/1.6 "IBM Plex Mono", monospace;
+}
+
+.guide-step-list {
+  border-bottom: 1px solid var(--rule);
+}
+
+.guide-step-list .guide-section {
+  border-bottom: 1px solid var(--rule);
+}
+
+.guide-step-list .guide-section:last-child {
+  border-bottom: 0;
+}
+
+.guide-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px 32px;
+  padding-block: 4px;
+}
+
+.guide-detail-grid > div {
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.guide-detail-grid p {
+  margin: 8px 0 0;
+}
+
 @media (max-width: 760px) {
   .site-header,
   main,
@@ -593,6 +739,24 @@ footer nav {
 
   footer {
     padding-block: 26px;
+  }
+
+  .guide-main {
+    width: min(100% - 40px, 800px);
+  }
+
+  .guide-toc ol,
+  .guide-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-callout {
+    padding-inline: 16px;
+  }
+
+  .guide-command {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   footer nav {

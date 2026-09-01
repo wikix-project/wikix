@@ -3,6 +3,9 @@
 Wikix exports your X bookmarks through the official X API. Setup differs by operating system, so
 choose the computer you will use to run Wikix:
 
+Already comfortable with developer tools? Use the [Quick setup](quick-setup.md) for the shortest
+command-first path, or continue with an operating-system guide below.
+
 ## Choose your operating system
 
 - [macOS](getting-started-macos.md) — use Terminal and macOS Keychain.
