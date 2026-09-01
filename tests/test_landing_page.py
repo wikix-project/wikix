@@ -34,8 +34,10 @@ class LandingPageParser(HTMLParser):
         self.links_by_section: dict[str, list[str]] = {}
         self.footer_links: list[str] = []
         self.nav_labels: list[str] = []
+        self.primary_nav_links: list[str] = []
         self._current_section: str | None = None
         self._in_footer = False
+        self._in_primary_nav = False
 
     def handle_starttag(
         self,
@@ -51,10 +53,14 @@ class LandingPageParser(HTMLParser):
         if tag == "footer":
             self._in_footer = True
         if tag == "nav" and values.get("aria-label"):
-            self.nav_labels.append(str(values["aria-label"]))
+            label = str(values["aria-label"])
+            self.nav_labels.append(label)
+            self._in_primary_nav = label == "Primary navigation"
         if tag == "a" and values.get("href"):
             href = str(values["href"])
             self.links.append(href)
+            if self._in_primary_nav:
+                self.primary_nav_links.append(href)
             if self._current_section:
                 self.links_by_section.setdefault(self._current_section, []).append(href)
             if self._in_footer:
@@ -73,6 +79,8 @@ class LandingPageParser(HTMLParser):
             self._current_section = None
         if tag == "footer":
             self._in_footer = False
+        if tag == "nav":
+            self._in_primary_nav = False
 
     def handle_data(self, data: str) -> None:
         self.text.append(data)
@@ -283,6 +291,20 @@ def test_site_identifies_the_stable_1_0_release() -> None:
         assert 'class="wordmark"' in html
         assert "wikix <span>1.0</span>" in html
         assert "alpha" not in html.casefold()
+
+
+def test_mobile_header_keeps_a_contextual_internal_link_on_each_page() -> None:
+    expected_first_links = {
+        "index.html": "#how-it-works",
+        "guide.html": "/quick-setup.html",
+        "quick-setup.html": "/",
+    }
+
+    for page, expected_first_link in expected_first_links.items():
+        parser = LandingPageParser()
+        parser.feed((ROOT / page).read_text(encoding="utf-8"))
+
+        assert parser.primary_nav_links[0] == expected_first_link
 
 
 def test_styles_encode_compact_note_led_responsive_layout() -> None:
