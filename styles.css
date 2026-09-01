@@ -639,7 +639,7 @@ footer nav {
     min-height: 64px;
   }
 
-  .site-header nav a:not(:last-child) {
+  .site-header nav a:not(:first-child) {
     display: none;
   }
 

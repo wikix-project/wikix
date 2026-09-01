@@ -101,7 +101,8 @@ def test_landing_page_is_user_first_and_literal() -> None:
     assert {"header", "nav", "main", "section", "footer"}.issubset(parser.tags)
     assert "Export X bookmarks to Markdown and JSONL." in content
     assert "files you own" not in content
-    assert "Alpha" in content
+    assert "Stable release" in content
+    assert "Wikix 1.0" in content
     assert "install from source" in content
     assert SOURCE_INSTALL_UV in content
     assert GUIDE_URL in parser.links
@@ -117,7 +118,7 @@ def test_landing_page_leads_with_exported_note_and_first_action() -> None:
     assert parser.tags.count("h1") == 1
     assert "Export X bookmarks to Markdown and JSONL." in content
     assert "one Obsidian-ready Markdown file per current bookmark" in content
-    assert "Alpha · Python 3.12+" in content
+    assert "Wikix 1.0 · Python 3.12+" in content
     assert "requires your own X developer app and API credits" in content
     assert "bookmarks/1900000000000000000.md" in content
     assert "## Post" in content
@@ -275,6 +276,15 @@ def test_local_stylesheet_exists() -> None:
         assert (ROOT / stylesheet).is_file()
 
 
+def test_site_identifies_the_stable_1_0_release() -> None:
+    for page in ("index.html", "guide.html", "quick-setup.html"):
+        html = (ROOT / page).read_text(encoding="utf-8")
+
+        assert 'class="wordmark"' in html
+        assert "wikix <span>1.0</span>" in html
+        assert "alpha" not in html.casefold()
+
+
 def test_styles_encode_compact_note_led_responsive_layout() -> None:
     stylesheet = (ROOT / "styles.css").read_text(encoding="utf-8")
     mobile_styles = stylesheet.split("@media (max-width: 760px) {", maxsplit=1)[1]
@@ -291,7 +301,8 @@ def test_styles_encode_compact_note_led_responsive_layout() -> None:
         assert selector in stylesheet
     assert "grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);" in stylesheet
     assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in stylesheet
-    assert ".site-header nav a:not(:last-child)" in mobile_styles
+    assert ".site-header nav a:not(:first-child)" in mobile_styles
+    assert ".site-header nav a:not(:last-child)" not in mobile_styles
     assert "display: none;" in mobile_styles
     assert "white-space: pre-wrap;" in mobile_styles
     assert "white-space: inherit;" in stylesheet
